@@ -6,58 +6,74 @@ export async function POST(request) {
 
     const prompt = `Create a detailed ${days}-day personalized travel itinerary for ${destination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. Return a concise but useful plan with a title, a short overview, a day-by-day breakdown, and a list of must-know tips.`;
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    // 1. Change your env variable to look for Gemini's key
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
         {
           itinerary: {
             title: `${destination} Adventure`,
-            overview: "AI itinerary generation is ready for configuration. Add an OpenAI API key to enable live itinerary generation.",
+            overview: "AI itinerary generation is ready for configuration. Add a Gemini API key to enable live itinerary generation.",
             days: [
               {
                 day: 1,
                 title: "Starter plan",
-                plan: "Add your OpenAI API key to generate a personalized itinerary.",
+                plan: "Add your Gemini API key to generate a personalized itinerary.",
               },
             ],
-            tips: ["Set OPENAI_API_KEY in your environment to activate AI generation."],
+            tips: ["Set GEMINI_API_KEY in your environment to activate AI generation."],
           },
         },
         { status: 200 }
       );
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a travel planning assistant. Respond with valid JSON containing title, overview, days (array of objects with day, title, plan), and tips (array of strings).",
+    // 2. Use the Gemini REST API endpoint (API key goes directly in the URL)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          // 3. Gemini uses "systemInstruction" instead of a "system" role message
+          systemInstruction: {
+            parts: [
+              {
+                text: "You are a travel planning assistant. You MUST respond with valid JSON containing the following structure: { \"title\": \"string\", \"overview\": \"string\", \"days\": [ { \"day\": number, \"title\": \"string\", \"plan\": \"string\" } ], \"tips\": [ \"string\" ] }.",
+              },
+            ],
           },
-          {
-            role: "user",
-            content: prompt,
+          // 4. The main prompt goes in "contents"
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          // 5. Force JSON output
+          generationConfig: {
+            temperature: 0.7,
+            responseMimeType: "application/json",
           },
-        ],
-      }),
-    });
+        }),
+      }
+    );
 
     const data = await response.json();
 
+    // Catch API-level errors
     if (!response.ok) {
       throw new Error(data.error?.message || "Unable to generate itinerary.");
     }
 
-    const content = data.choices?.[0]?.message?.content || "{}";
+    // 6. Extract the text from Gemini's specific response structure
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     const cleaned = content.replace(/```json|```/g, "").trim();
 
     let parsed;
