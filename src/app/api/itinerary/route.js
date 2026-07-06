@@ -6,7 +6,7 @@ export async function POST(request) {
 
     const prompt = `Create a detailed ${days}-day personalized travel itinerary for ${destination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. Return a concise but useful plan with a title, a short overview, a day-by-day breakdown, and a list of must-know tips.`;
 
-    // 1. Change your env variable to look for Gemini's key
+   
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -29,7 +29,7 @@ export async function POST(request) {
       );
     }
 
-    // 2. Use the Gemini REST API endpoint (API key goes directly in the URL)
+    
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
@@ -38,7 +38,7 @@ export async function POST(request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          // 3. Gemini uses "systemInstruction" instead of a "system" role message
+          
           systemInstruction: {
             parts: [
               {
@@ -46,7 +46,7 @@ export async function POST(request) {
               },
             ],
           },
-          // 4. The main prompt goes in "contents"
+          
           contents: [
             {
               parts: [
@@ -56,7 +56,7 @@ export async function POST(request) {
               ],
             },
           ],
-          // 5. Force JSON output
+          
           generationConfig: {
             temperature: 0.7,
             responseMimeType: "application/json",
@@ -67,12 +67,12 @@ export async function POST(request) {
 
     const data = await response.json();
 
-    // Catch API-level errors
+    // Catching API-level errors
     if (!response.ok) {
       throw new Error(data.error?.message || "Unable to generate itinerary.");
     }
 
-    // 6. Extract the text from Gemini's specific response structure
+    //  Extracting the text from Gemini's specific response structure
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     const cleaned = content.replace(/```json|```/g, "").trim();
 
