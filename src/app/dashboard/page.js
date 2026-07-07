@@ -566,9 +566,9 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
+                        <button
               onClick={handleSignOut}
-              className="rounded-full border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700"
+              className="rounded-full bg-red-600 px-5 py-3 font-semibold text-white transition hover:bg-red-700"
             >
               Sign out
             </button>

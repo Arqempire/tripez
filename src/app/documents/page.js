@@ -37,6 +37,21 @@ const generateStoragePath = (userId, safeFileName) => {
   return `${userId}/${Date.now()}-${safeFileName}`;
 };
 
+const persistDocumentsData = async (userId, nextDocuments) => {
+  if (typeof window !== "undefined" && userId) {
+    window.localStorage.setItem(getStorageKey(userId), JSON.stringify(nextDocuments));
+    if (supabase) {
+      try {
+        await supabase.auth.updateUser({
+          data: { documents: nextDocuments },
+        });
+      } catch (error) {
+        console.error("Failed to sync documents metadata with Supabase Auth:", error);
+      }
+    }
+  }
+};
+
 export default function DocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState([]);
@@ -50,24 +65,9 @@ export default function DocumentsPage() {
   const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const persistDocuments = async (nextDocuments) => {
-    if (typeof window !== "undefined" && userId) {
-      window.localStorage.setItem(getStorageKey(userId), JSON.stringify(nextDocuments));
-      if (supabase) {
-        try {
-          await supabase.auth.updateUser({
-            data: { documents: nextDocuments },
-          });
-        } catch (error) {
-          console.error("Failed to sync documents metadata with Supabase Auth:", error);
-        }
-      }
-    }
-  };
-
   useEffect(() => {
     if (!loading && userId) {
-      persistDocuments(documents);
+      persistDocumentsData(userId, documents);
     }
   }, [documents, userId, loading]);
 

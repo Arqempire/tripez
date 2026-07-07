@@ -519,6 +519,34 @@ function PlannerContent() {
       ]
     : [];
 
+  const formatPlanText = (text) => {
+    if (!text) return "";
+    const parts = text.split(/\*\*([^*]+)\*\*/g);
+    if (parts.length === 1) return text;
+    
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return (
+          <strong key={index} className="font-semibold text-sky-950 bg-sky-100/60 px-1 py-0.5 rounded-md border border-sky-200/40 shadow-2xs">
+            {part}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
+  const activeDayHighlights = useMemo(() => {
+    if (!activeDay || !activeDay.plan) return [];
+    const regex = /\*\*([^*]+)\*\*/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(activeDay.plan)) !== null) {
+      if (match[1]) matches.push(match[1].trim());
+    }
+    return Array.from(new Set(matches)).slice(0, 5);
+  }, [activeDay]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">
@@ -887,19 +915,36 @@ function PlannerContent() {
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <p className="text-sm font-semibold uppercase tracking-[0.25em] text-sky-700">Day route</p>
                         <h3 className="mt-2 text-2xl font-semibold text-slate-950">{activeDay.title}</h3>
-                        <p className="mt-3 text-sm leading-7 text-slate-600">{activeDay.plan}</p>
+                        
+                        {activeDayHighlights.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {activeDayHighlights.map((high, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-sky-50 border border-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                                📍 {high}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <p className="mt-4 text-sm leading-7 text-slate-600 whitespace-pre-wrap">
+                          {formatPlanText(activeDay.plan)}
+                        </p>
                       </div>
                     </div>
                   ) : null}
 
                   {summary.tips.length ? (
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-950">Helpful tips</h3>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {summary.tips.map((tip) => (
-                          <span key={tip} className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm leading-6 text-emerald-800">
-                            {tip}
-                          </span>
+                    <div className="rounded-[1.25rem] border border-amber-200 bg-amber-50/50 p-5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl" aria-hidden="true">💡</span>
+                        <h4 className="font-semibold text-amber-900">Must-know travel tips</h4>
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {summary.tips.map((tip, idx) => (
+                          <div key={idx} className="flex gap-2.5 rounded-2xl bg-white p-4 border border-amber-100 shadow-sm">
+                            <span className="text-amber-500 font-bold" aria-hidden="true">•</span>
+                            <p className="text-sm text-slate-700 leading-relaxed">{tip}</p>
+                          </div>
                         ))}
                       </div>
                     </div>

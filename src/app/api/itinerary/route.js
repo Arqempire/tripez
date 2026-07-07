@@ -4,7 +4,7 @@ export async function POST(request) {
   try {
     const { destination, days, travelers, interests, budget, style } = await request.json();
 
-    const prompt = `Create a detailed ${days}-day personalized travel itinerary for ${destination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. Return a concise but useful plan with a title, a short overview, a day-by-day breakdown, and a list of must-know tips.`;
+    const prompt = `Create a detailed ${days}-day personalized travel itinerary for ${destination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. Return a concise but useful plan with a title, a short overview, a day-by-day breakdown, and a list of must-know tips. Inside the 'plan' property string of each day, please use markdown bolding (**item**) to highlight key attractions, activities, locations, times of day, and restaurants so they stand out.`;
 
    
     const apiKey = process.env.GEMINI_API_KEY;
