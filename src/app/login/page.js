@@ -12,9 +12,22 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Forgot password states
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+
   useEffect(() => {
     const redirectIfSignedIn = async () => {
       if (!supabase) return;
+
+      // If this is a password recovery link, let it route to the reset-password page
+      if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -50,6 +63,33 @@ export default function LoginPage() {
     router.replace("/dashboard");
   };
 
+  const handleRequestReset = async (event) => {
+    event.preventDefault();
+    setResetLoading(true);
+    setResetMessage("");
+    setResetSuccess(false);
+
+    if (!supabase) {
+      setResetMessage("Supabase is not configured yet.");
+      setResetLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      setResetMessage(error.message);
+      setResetLoading(false);
+      return;
+    }
+
+    setResetSuccess(true);
+    setResetMessage("Password reset link sent! Check your email inbox.");
+    setResetLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] px-6 py-16 text-slate-900">
       <div className="mx-auto flex max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/70 lg:flex-row">
@@ -79,9 +119,23 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-700">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetEmail(email); // pre-populate if they typed it
+                    setResetMessage("");
+                    setResetSuccess(false);
+                    setShowResetModal(true);
+                  }}
+                  className="text-xs font-semibold text-sky-700 hover:text-sky-800"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <input
                 id="password"
                 type="password"
@@ -121,6 +175,68 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showResetModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-semibold text-slate-950">Reset password</h3>
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleRequestReset} className="mt-4 space-y-4">
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Enter your email address and we&apos;ll send you a secure recovery link to create a new password.
+              </p>
+
+              <div>
+                <label htmlFor="reset-email" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Email Address
+                </label>
+                <input
+                  id="reset-email"
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(event) => setResetEmail(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              {resetMessage ? (
+                <p className={`rounded-2xl px-4 py-3 text-sm ${resetSuccess ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : 'bg-rose-50 text-rose-800 border border-rose-100'}`}>
+                  {resetMessage}
+                </p>
+              ) : null}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(false)}
+                  className="flex-1 rounded-full border border-slate-200 bg-white py-3 font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="flex-1 rounded-full bg-sky-600 py-3 font-semibold text-white hover:bg-sky-700 transition disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {resetLoading ? "Sending..." : "Send link"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

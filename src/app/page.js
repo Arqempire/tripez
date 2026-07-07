@@ -44,6 +44,12 @@ export default function Home() {
         return;
       }
 
+      // If this is a password recovery link, do not redirect to dashboard on mount
+      if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+        setCheckingSession(false);
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -61,8 +67,14 @@ export default function Home() {
 
     const {
       data: { subscription },
-    } = supabase?.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
+    } = supabase?.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.replace("/reset-password");
+      } else if (session?.user) {
+        // Double check hash parameters to prevent overriding recovery redirects
+        if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+          return;
+        }
         router.replace("/dashboard");
       }
     }) || { data: { subscription: null } };
