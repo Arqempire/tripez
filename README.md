@@ -4,39 +4,39 @@
 
 ---
 
-## 🚀 Key Modules & Features
+## Key Modules & Features
 
-### 1. 🤖 AI Itinerary Planner
+### 1.  AI Itinerary Planner
 * **Tailored Generation**: Prompts the Gemini 2.5 Flash model to compile personalized multi-day trip routes, packing styles, and group sizing.
 * **Auto-Extracted Tags**: Reads generated plans and dynamically maps the top 5 unique attractions as badges (`📍 Attraction`) above the plan description.
 * **Important Detail Highlights**: Parsed text formatting intercepts markdown bold tags (`**item**`) to render high-contrast visual spans, making key times, restaurants, and sights pop instantly.
 * **SaaS Action Bar**: Real-time status indicators (Emerald for saved, Amber pulse for unsaved edits), save/update hooks, and clear/reset commands.
 
-### 2. 💼 Document Vault
+### 2.Document Vault
 * **Drag-and-Drop Uploader**: Client-side drag zone for travel PDFs, flight tickets, and hotel vouchers (size limits enforced at 1MB).
 * **Supabase Storage Integration**: Attachments upload directly to secure cloud storage buckets with temporary download url resolutions.
 * **Session Syncing**: File metadata (title, filename, timestamps, storage keys) is saved in Supabase profile metadata (`user_metadata.documents`), persisting lists across logouts and devices.
 
-### 3. 📊 Expense Tracker & Exchange Converter
+### 3.Expense Tracker & Exchange Converter
 * **Budget Limits Meter**: Live spent indicator meters tracking spent values relative to budget limits.
 * **Base Currency Toggle**: Switch display formats globally between **INR (₹), USD ($), EUR (€), GBP (£), JPY (¥), CAD (C$), AUD (A$), AED (Dh), and SGD (S$)**.
 * **Daily Exchange Rates**: Fetches daily global exchange rates from `open.er-api.com` with pre-seeded offline convert constants.
 * **Syncing**: Automatically writes log updates, budget limits, and currency settings back to `user_metadata.expenses` / `user_metadata.budget`.
 
-### 4. 👥 Collaboration Space
+### 4.Collaboration Space
 * **Active Trip Selection Switcher**: Header dropdown that switches context (notes, companions list, shared splits) dynamically between active trips.
 * **Group Notes**: Shared rich textarea note logs synced to Supabase.
 * **Cost Splitter Timeline**: Log shared expense items, showing total costs, splitting transactions, and logging who paid for what.
 * **Syncing**: Group details, companions, and split ledgers are synced to `user_metadata.collab` (indexed by `tripId`).
 
-### 5. 📍 Location Selection
+### 5.Location Selection
 * **3-Tier Dropdowns**: Symmetrical Country ➔ State ➔ Place recommendation selectors.
 * **Custom Fallbacks**: "Other / Custom..." selector flags display custom text inputs immediately without disabling or clearing parental country dropdowns.
 * **195 Country support**: Pre-seeded database options covering all sovereign states.
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 * **Frontend Framework**: Next.js App Router (React 18)
 * **Styling**: Tailwind CSS v4 (with component styles configured inside [globals.css](file:///Users/arq/TripEZ/tripez/src/app/globals.css))
@@ -46,7 +46,7 @@
 
 ---
 
-## 📂 Project Architecture
+## Project Architecture
 
 ```text
 tripez/
@@ -67,7 +67,7 @@ tripez/
 
 ---
 
-## 🗄️ Database Schema Blueprint
+## Database Schema Blueprint
 
 ### Relational Table: `trips`
 Primary records table stored in Supabase PostgreSQL:
@@ -113,6 +113,55 @@ Cloud-synced schema stored in Supabase Auth user profiles:
 
 ---
 
+## Supabase Database & Security Policies Setup
+
+To configure your Supabase backend for **TripEZ**, follow these steps:
+
+### 1. Database Table Creation & RLS Policies
+Navigate to the **SQL Editor** in your Supabase dashboard and run the following script to create the `trips` table, enable Row Level Security, and configure authorization policies:
+
+```sql
+-- Create the trips table linked to authenticated users
+create table public.trips (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  destination text not null,
+  dates text not null,
+  travelers integer default 1,
+  interests text,
+  notes text,
+  image text,
+  gallery text[] default array[]::text[],
+  itinerary jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable Row Level Security (RLS)
+alter table public.trips enable row level security;
+
+-- Create security policies mapping records to authenticated owners
+create policy "Users can view their own trips" on public.trips
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own trips" on public.trips
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own trips" on public.trips
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete their own trips" on public.trips
+  for delete using (auth.uid() = user_id);
+```
+
+### 2. Cloud Storage Bucket Configuration
+For the **Document Vault** file uploads to work:
+1. Go to the **Storage** page in your Supabase Dashboard.
+2. Click **New Bucket** and name it `user-files`.
+3. Set the bucket to **Public** (or configure custom read/write policies allowing authenticated users to upload and delete files matching `auth.role() = 'authenticated'`).
+
+---
+
 ## ⚙️ Environment Variables Config
 
 Create a `.env.local` file in the root of the project and populate it with your Supabase and Gemini access credentials:
@@ -128,7 +177,7 @@ GEMINI_API_KEY=AIzaSyA...
 
 ---
 
-## 💿 Installation & Setup
+## Installation & Setup
 
 1. **Clone the Repository**:
    ```bash
@@ -155,9 +204,3 @@ GEMINI_API_KEY=AIzaSyA...
    npm run build
    ```
 
----
-
-## 🎨 Visual System Documentation
-For system diagrams, ER schemas, folder structures, and high-fidelity desktop wireframe layouts, refer to the developer blueprints located in the project artifacts directory:
-* **Vector Slide Deck**: `trip_ez_system_blueprint.pptx`
-* **Layout Handoff HTML**: `trip_ez_system_blueprint.html` (print-ready for PDF exports)
