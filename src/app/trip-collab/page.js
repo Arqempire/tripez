@@ -7,27 +7,46 @@ import { supabase } from "@/lib/supabase/client";
 
 const STORAGE_PREFIX = "tripez-collab";
 
+const persistCollabData = async (userId, tripId, data) => {
+  if (typeof window !== "undefined" && userId && tripId) {
+    const key = `${STORAGE_PREFIX}-store-${userId}`;
+    const stored = window.localStorage.getItem(key);
+    let store = {};
+    try {
+      store = stored ? JSON.parse(stored) : {};
+    } catch {}
+    store[tripId] = data;
+    window.localStorage.setItem(key, JSON.stringify(store));
+    
+    if (supabase) {
+      try {
+        await supabase.auth.updateUser({
+          data: { collab: store }
+        });
+      } catch (error) {
+        console.error("Failed to sync collab data:", error);
+      }
+    }
+  }
+};
+
 export default function TripCollabPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
-  const [tripName, setTripName] = useState("Kashmir Escape");
+  
+  const [tripsList, setTripsList] = useState([]);
+  const [selectedTripId, setSelectedTripId] = useState("");
+  const [tripName, setTripName] = useState("Select a trip");
   const [inviteEmail, setInviteEmail] = useState("");
   const [members, setMembers] = useState([
     { id: "me", name: "You", role: "Trip host", share: "100%" },
   ]);
   const [notes, setNotes] = useState("Share the itinerary, flight details, and any split costs here.");
-  const [expenses, setExpenses] = useState([
-    { id: 1, title: "Hotel", amount: 3200, paidBy: "You", split: "Equally" },
-    { id: 2, title: "Shikara ride", amount: 1200, paidBy: "Mina", split: "Split 2 ways" },
-  ]);
+  const [expenses, setExpenses] = useState([]);
+  const [expenseForm, setExpenseForm] = useState({ title: "", amount: "", paidBy: "You" });
   const [message, setMessage] = useState("");
-
-  const persistState = (nextMembers, nextNotes, nextExpenses) => {
-    if (typeof window !== "undefined" && userId) {
-      window.localStorage.setItem(`${STORAGE_PREFIX}-${userId}`, JSON.stringify({ tripName, members: nextMembers, notes: nextNotes, expenses: nextExpenses }));
-    }
-  };
+  const [collabStore, setCollabStore] = useState({});
 
   useEffect(() => {
     const loadSession = async () => {
@@ -48,19 +67,56 @@ export default function TripCollabPage() {
       const currentUserId = session.user.id;
       setUserId(currentUserId);
 
-      if (typeof window !== "undefined") {
-        const savedState = window.localStorage.getItem(`${STORAGE_PREFIX}-${currentUserId}`);
-        if (savedState) {
-          try {
-            const parsed = JSON.parse(savedState);
-            if (parsed) {
-              setTripName(parsed.tripName || "Kashmir Escape");
-              setMembers(parsed.members || [{ id: "me", name: "You", role: "Trip host", share: "100%" }]);
-              setNotes(parsed.notes || "Share the itinerary, flight details, and any split costs here.");
-              setExpenses(parsed.expenses || []);
-            }
-          } catch {
-            window.localStorage.removeItem(`${STORAGE_PREFIX}-${currentUserId}`);
+      // Fetch user's saved trips
+      const { data: savedTrips } = await supabase
+        .from("trips")
+        .select("id, name")
+        .order("created_at", { ascending: false });
+
+      let activeTripId = "";
+      if (savedTrips && savedTrips.length > 0) {
+        setTripsList(savedTrips);
+        activeTripId = savedTrips[0].id;
+        setSelectedTripId(activeTripId);
+        setTripName(savedTrips[0].name);
+      }
+
+      // Fetch collaboration metadata from user metadata
+      let cloudCollabStore = session.user?.user_metadata?.collab;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.collab) {
+          cloudCollabStore = user.user_metadata.collab;
+        }
+      } catch (err) {
+        console.error("Failed to load user metadata:", err);
+      }
+
+      const activeStore = cloudCollabStore || {};
+      setCollabStore(activeStore);
+
+      if (activeTripId && activeStore[activeTripId]) {
+        const tripData = activeStore[activeTripId];
+        setMembers(tripData.members || [{ id: "me", name: "You", role: "Trip host", share: "100%" }]);
+        setNotes(tripData.notes || "Share the itinerary, flight details, and any split costs here.");
+        setExpenses(tripData.expenses || []);
+      } else {
+        if (typeof window !== "undefined") {
+          const userStorageKey = `${STORAGE_PREFIX}-store-${currentUserId}`;
+          const savedCollab = window.localStorage.getItem(userStorageKey);
+          if (savedCollab) {
+            try {
+              const parsed = JSON.parse(savedCollab);
+              if (parsed) {
+                setCollabStore(parsed);
+                if (activeTripId && parsed[activeTripId]) {
+                  const tripData = parsed[activeTripId];
+                  setMembers(tripData.members || [{ id: "me", name: "You", role: "Trip host", share: "100%" }]);
+                  setNotes(tripData.notes || "Share the itinerary, flight details, and any split costs here.");
+                  setExpenses(tripData.expenses || []);
+                }
+              }
+            } catch {}
           }
         }
       }
@@ -72,9 +128,28 @@ export default function TripCollabPage() {
   }, [router]);
 
   useEffect(() => {
-    if (!userId) return;
-    persistState(members, notes, expenses);
-  }, [members, notes, expenses, userId]);
+    if (!loading && userId && selectedTripId) {
+      persistCollabData(userId, selectedTripId, { members, notes, expenses });
+    }
+  }, [members, notes, expenses, userId, selectedTripId, loading]);
+
+  const handleTripChange = (tripId) => {
+    setSelectedTripId(tripId);
+    const selected = tripsList.find(t => t.id === tripId);
+    if (selected) {
+      setTripName(selected.name);
+    }
+    
+    const tripData = collabStore[tripId] || {
+      members: [{ id: "me", name: "You", role: "Trip host", share: "100%" }],
+      notes: "Share the itinerary, flight details, and any split costs here.",
+      expenses: []
+    };
+    
+    setMembers(tripData.members);
+    setNotes(tripData.notes);
+    setExpenses(tripData.expenses);
+  };
 
   const totalShared = useMemo(() => expenses.reduce((sum, item) => sum + item.amount, 0), [expenses]);
 
@@ -95,13 +170,34 @@ export default function TripCollabPage() {
     const nextMembers = [...members, newMember];
     setMembers(nextMembers);
     setInviteEmail("");
-    persistState(nextMembers, notes, expenses);
     setMessage(`Invited ${inviteEmail.trim()} to ${tripName}.`);
   };
 
   const handleAddExpense = (event) => {
     event.preventDefault();
-    setMessage("Shared expense updates are ready for review.");
+
+    if (!expenseForm.title.trim() || !expenseForm.amount) {
+      setMessage("Please enter a title and amount for the shared expense.");
+      return;
+    }
+
+    const amount = Number(expenseForm.amount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      setMessage("Please enter a valid amount.");
+      return;
+    }
+
+    const newExpense = {
+      id: Date.now(),
+      title: expenseForm.title.trim(),
+      amount,
+      paidBy: expenseForm.paidBy,
+      split: "Equally"
+    };
+
+    setExpenses([newExpense, ...expenses]);
+    setExpenseForm({ title: "", amount: "", paidBy: "You" });
+    setMessage(`Shared expense "${newExpense.title}" added.`);
   };
 
   if (loading) {
@@ -133,13 +229,31 @@ export default function TripCollabPage() {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-violet-50 p-6">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-700">Trip overview</p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-950">{tripName}</h2>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-700">Trip overview</p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-950">{tripName}</h2>
+                </div>
+                {tripsList.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Trip</label>
+                    <select
+                      value={selectedTripId}
+                      onChange={(event) => handleTripChange(event.target.value)}
+                      className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-violet-500 focus:outline-none"
+                    >
+                      {tripsList.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                className="mt-4 min-h-28 w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3"
+                className="w-full min-h-28 rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3"
                 placeholder="Share updates, hotel details, checkpoints, and plan notes"
               />
             </div>
@@ -190,8 +304,40 @@ export default function TripCollabPage() {
             <form onSubmit={handleAddExpense} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-900">Add shared expense</p>
               <div className="mt-3 space-y-3">
-                <input className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3" placeholder="Hotel / transport / food" />
-                <input className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3" placeholder="Amount" />
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">Description</label>
+                  <input
+                    value={expenseForm.title}
+                    onChange={(event) => setExpenseForm({ ...expenseForm, title: event.target.value })}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-violet-500 focus:outline-none"
+                    placeholder="Hotel / transport / food"
+                  />
+                </div>
+                <div className="grid gap-3 grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-500">Amount (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={expenseForm.amount}
+                      onChange={(event) => setExpenseForm({ ...expenseForm, amount: event.target.value })}
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-violet-500 focus:outline-none"
+                      placeholder="1500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-500">Paid By</label>
+                    <select
+                      value={expenseForm.paidBy}
+                      onChange={(event) => setExpenseForm({ ...expenseForm, paidBy: event.target.value })}
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-violet-500 focus:outline-none"
+                    >
+                      {members.map((member) => (
+                        <option key={member.id} value={member.name}>{member.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <button type="submit" className="w-full rounded-full bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700">
                   Save shared expense
                 </button>
@@ -206,7 +352,19 @@ export default function TripCollabPage() {
                       <p className="font-semibold text-slate-900">{expense.title}</p>
                       <p className="mt-1 text-sm text-slate-500">Paid by {expense.paidBy} · {expense.split}</p>
                     </div>
-                    <p className="font-semibold text-slate-900">₹{expense.amount.toFixed(0)}</p>
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">₹{expense.amount.toFixed(0)}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExpenses(expenses.filter((e) => e.id !== expense.id));
+                          setMessage(`Removed shared expense "${expense.title}".`);
+                        }}
+                        className="mt-2 text-sm font-semibold text-rose-600 hover:text-rose-700 transition"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

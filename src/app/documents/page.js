@@ -31,6 +31,12 @@ const getStoragePathFromUrl = (fileUrl) => {
 
 const starterDocuments = [];
 
+const generateUniqueId = () => Date.now().toString();
+
+const generateStoragePath = (userId, safeFileName) => {
+  return `${userId}/${Date.now()}-${safeFileName}`;
+};
+
 export default function DocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState([]);
@@ -44,11 +50,26 @@ export default function DocumentsPage() {
   const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const persistDocuments = (nextDocuments) => {
+  const persistDocuments = async (nextDocuments) => {
     if (typeof window !== "undefined" && userId) {
       window.localStorage.setItem(getStorageKey(userId), JSON.stringify(nextDocuments));
+      if (supabase) {
+        try {
+          await supabase.auth.updateUser({
+            data: { documents: nextDocuments },
+          });
+        } catch (error) {
+          console.error("Failed to sync documents metadata with Supabase Auth:", error);
+        }
+      }
     }
   };
+
+  useEffect(() => {
+    if (!loading && userId) {
+      persistDocuments(documents);
+    }
+  }, [documents, userId, loading]);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -70,6 +91,23 @@ export default function DocumentsPage() {
       const currentUserId = session.user.id;
       setUserId(currentUserId);
 
+      // Try reading from user metadata first
+      let userMetadataDocs = session.user?.user_metadata?.documents;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.documents) {
+          userMetadataDocs = user.user_metadata.documents;
+        }
+      } catch (err) {
+        console.error("Failed to fetch fresh user metadata:", err);
+      }
+
+      if (userMetadataDocs && Array.isArray(userMetadataDocs)) {
+        setDocuments(userMetadataDocs);
+        setLoading(false);
+        return;
+      }
+
       if (typeof window !== "undefined") {
         const userStorageKey = getStorageKey(currentUserId);
         const fallbackStorageKey = STORAGE_KEY;
@@ -79,6 +117,10 @@ export default function DocumentsPage() {
             const parsedDocuments = JSON.parse(savedDocuments);
             if (parsedDocuments?.length) {
               setDocuments(parsedDocuments);
+              // Migrate local documents to Supabase user_metadata immediately
+              await supabase.auth.updateUser({
+                data: { documents: parsedDocuments }
+              });
               setLoading(false);
               return;
             }
@@ -125,7 +167,7 @@ export default function DocumentsPage() {
     setUploadMessage("Uploading file...");
 
     const safeFileName = file.name.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
-    const storagePath = `${userId}/${Date.now()}-${safeFileName}`;
+    const storagePath = generateStoragePath(userId, safeFileName);
 
     try {
       const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(storagePath, file, {
@@ -142,15 +184,11 @@ export default function DocumentsPage() {
       } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
 
       setUploadProgress(100);
-      setDocuments((currentDocuments) => {
-        const updatedDocuments = currentDocuments.map((document) =>
+      setDocuments((currentDocuments) =>
+        currentDocuments.map((document) =>
           document.id === documentId ? { ...document, fileName: file.name, fileUrl: publicUrl, fileType: file.type, storagePath } : document
-        );
-
-        persistDocuments(updatedDocuments);
-
-        return updatedDocuments;
-      });
+        )
+      );
       setUploadMessage(`Upload complete: ${file.name}`);
     } catch (error) {
       const message = error?.message || "Unknown upload error";
@@ -178,18 +216,14 @@ export default function DocumentsPage() {
     const documentTitle = form.title.trim();
     const selectedFile = form.file;
     const newDocument = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       title: documentTitle,
       fileName: "",
       fileUrl: "",
       fileType: "",
     };
 
-    setDocuments((currentDocuments) => {
-      const nextDocuments = [newDocument, ...currentDocuments];
-      persistDocuments(nextDocuments);
-      return nextDocuments;
-    });
+    setDocuments((currentDocuments) => [newDocument, ...currentDocuments]);
 
     setForm({ title: "", file: null });
 
@@ -224,11 +258,7 @@ export default function DocumentsPage() {
       }
     }
 
-    setDocuments((currentDocuments) => {
-      const nextDocuments = currentDocuments.filter((document) => document.id !== documentId);
-      persistDocuments(nextDocuments);
-      return nextDocuments;
-    });
+    setDocuments((currentDocuments) => currentDocuments.filter((document) => document.id !== documentId));
 
     setUploadMessage(documentToDelete?.title ? `${documentToDelete.title} was removed.` : "Document removed.");
   };
@@ -360,6 +390,7 @@ export default function DocumentsPage() {
                     </div>
 
                     {document.fileUrl && document.fileType?.startsWith("image/") ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={document.fileUrl} alt={document.title} className="mt-4 h-40 w-full rounded-2xl object-cover" />
                     ) : null}
 

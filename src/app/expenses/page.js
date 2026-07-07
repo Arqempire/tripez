@@ -7,22 +7,71 @@ import { supabase } from "@/lib/supabase/client";
 
 const STORAGE_PREFIX = "tripez-expenses";
 
-const formatCurrency = (value) => `₹${Number(value).toFixed(0)}`;
+const CURRENCY_SYMBOLS = {
+  USD: "$",
+  INR: "₹",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+  CAD: "C$",
+  AUD: "A$",
+  AED: "Dh",
+  SGD: "S$"
+};
+
+const formatCurrency = (value, currencyCode = "INR") => {
+  const symbol = CURRENCY_SYMBOLS[currencyCode] || "₹";
+  return `${symbol}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+};
+
+const persistExpensesData = async (userId, nextExpenses, nextBudget, nextCurrency) => {
+  if (typeof window !== "undefined" && userId) {
+    window.localStorage.setItem(`${STORAGE_PREFIX}-${userId}`, JSON.stringify(nextExpenses));
+    window.localStorage.setItem(`${STORAGE_PREFIX}-budget-${userId}`, String(nextBudget));
+    window.localStorage.setItem(`${STORAGE_PREFIX}-currency-${userId}`, String(nextCurrency));
+    if (supabase) {
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            expenses: nextExpenses,
+            budget: Number(nextBudget) || 1200,
+            currency: nextCurrency
+          }
+        });
+      } catch (error) {
+        console.error("Failed to sync expenses and budget with Supabase Auth:", error);
+      }
+    }
+  }
+};
 
 export default function ExpensesPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
   const [budget, setBudget] = useState("1200");
+  const [currency, setCurrency] = useState("INR");
   const [expenses, setExpenses] = useState([]);
   const [form, setForm] = useState({ title: "", amount: "", category: "Food", note: "" });
   const [message, setMessage] = useState("");
 
-  const persistExpenses = (nextExpenses) => {
-    if (typeof window !== "undefined" && userId) {
-      window.localStorage.setItem(`${STORAGE_PREFIX}-${userId}`, JSON.stringify(nextExpenses));
-    }
-  };
+  const [rates, setRates] = useState({
+    USD: 1,
+    INR: 83.5,
+    EUR: 0.92,
+    GBP: 0.78,
+    JPY: 160.5,
+    CAD: 1.37,
+    AUD: 1.50,
+    AED: 3.67,
+    SGD: 1.35
+  });
+  const [converterForm, setConverterForm] = useState({
+    amount: "100",
+    from: "USD",
+    to: "INR"
+  });
+  const [ratesUpdated, setRatesUpdated] = useState("");
 
   useEffect(() => {
     const loadSession = async () => {
@@ -43,11 +92,62 @@ export default function ExpensesPage() {
       const currentUserId = session.user.id;
       setUserId(currentUserId);
 
+      // Try loading from user metadata first
+      let userMetadataExpenses = session.user?.user_metadata?.expenses;
+      let userMetadataBudget = session.user?.user_metadata?.budget;
+      let userMetadataCurrency = session.user?.user_metadata?.currency;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata) {
+          if (user.user_metadata.expenses) {
+            userMetadataExpenses = user.user_metadata.expenses;
+          }
+          if (user.user_metadata.budget !== undefined) {
+            userMetadataBudget = user.user_metadata.budget;
+          }
+          if (user.user_metadata.currency) {
+            userMetadataCurrency = user.user_metadata.currency;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load user metadata:", err);
+      }
+
+      if (userMetadataExpenses && Array.isArray(userMetadataExpenses)) {
+        setExpenses(userMetadataExpenses);
+        if (userMetadataBudget !== undefined) {
+          setBudget(String(userMetadataBudget));
+        }
+        if (userMetadataCurrency) {
+          setCurrency(userMetadataCurrency);
+        }
+        setLoading(false);
+        return;
+      }
+
       if (typeof window !== "undefined") {
         const savedExpenses = window.localStorage.getItem(`${STORAGE_PREFIX}-${currentUserId}`);
+        const savedBudget = window.localStorage.getItem(`${STORAGE_PREFIX}-budget-${currentUserId}`);
+        const savedCurrency = window.localStorage.getItem(`${STORAGE_PREFIX}-currency-${currentUserId}`);
         if (savedExpenses) {
           try {
-            setExpenses(JSON.parse(savedExpenses));
+            const parsedExpenses = JSON.parse(savedExpenses);
+            setExpenses(parsedExpenses);
+            const loadedBudget = savedBudget || "1200";
+            setBudget(loadedBudget);
+            const loadedCurrency = savedCurrency || "INR";
+            setCurrency(loadedCurrency);
+
+            // Sync to cloud metadata immediately
+            await supabase.auth.updateUser({
+              data: {
+                expenses: parsedExpenses,
+                budget: Number(loadedBudget) || 1200,
+                currency: loadedCurrency
+              }
+            });
+            setLoading(false);
+            return;
           } catch {
             window.localStorage.removeItem(`${STORAGE_PREFIX}-${currentUserId}`);
           }
@@ -61,9 +161,39 @@ export default function ExpensesPage() {
   }, [router]);
 
   useEffect(() => {
-    if (!userId) return;
-    persistExpenses(expenses);
-  }, [expenses, userId]);
+    if (!loading && userId) {
+      persistExpensesData(userId, expenses, budget, currency);
+    }
+  }, [expenses, budget, currency, userId, loading]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchRates = async () => {
+      try {
+        const res = await fetch("https://open.er-api.com/v6/latest/USD");
+        if (!res.ok) throw new Error("Failed to fetch rates");
+        const data = await res.json();
+        if (active && data && data.rates) {
+          setRates(data.rates);
+          setRatesUpdated(new Date().toLocaleDateString());
+        }
+      } catch (err) {
+        console.warn("Using fallback exchange rates:", err);
+      }
+    };
+    fetchRates();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const convertedValue = useMemo(() => {
+    const amt = Number(converterForm.amount) || 0;
+    const fromRate = rates[converterForm.from] || 1;
+    const toRate = rates[converterForm.to] || 1;
+    const inUsd = amt / fromRate;
+    return inUsd * toRate;
+  }, [converterForm, rates]);
 
   const handleAddExpense = (event) => {
     event.preventDefault();
@@ -91,7 +221,6 @@ export default function ExpensesPage() {
     ];
 
     setExpenses(nextExpenses);
-    persistExpenses(nextExpenses);
     setForm({ title: "", amount: "", category: form.category, note: "" });
     setMessage("Expense added to your tracker.");
   };
@@ -99,7 +228,6 @@ export default function ExpensesPage() {
   const handleRemoveExpense = (expenseId) => {
     const nextExpenses = expenses.filter((expense) => expense.id !== expenseId);
     setExpenses(nextExpenses);
-    persistExpenses(nextExpenses);
     setMessage("Expense removed.");
   };
 
@@ -134,15 +262,36 @@ export default function ExpensesPage() {
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-amber-50 p-6">
-            <div className="flex items-center justify-between gap-3">
+          <div className="space-y-6">
+            <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-amber-50 p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-700">Budget overview</p>
                 <h2 className="mt-2 text-xl font-semibold text-slate-950">Stay on top of your trip costs</h2>
               </div>
-              <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Remaining</p>
-                <p className="text-lg font-semibold text-slate-900">{formatCurrency(remainingBudget)}</p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Base</label>
+                  <select
+                    value={currency}
+                    onChange={(event) => setCurrency(event.target.value)}
+                    className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-amber-500 focus:outline-none"
+                  >
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="AED">AED (Dh)</option>
+                    <option value="SGD">SGD (S$)</option>
+                  </select>
+                </div>
+                <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm border border-amber-100">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Remaining</p>
+                  <p className="text-lg font-semibold text-slate-900">{formatCurrency(remainingBudget, currency)}</p>
+                </div>
               </div>
             </div>
 
@@ -160,7 +309,7 @@ export default function ExpensesPage() {
               </div>
               <div className="rounded-2xl border border-dashed border-amber-200 bg-white p-4">
                 <p className="text-sm text-slate-500">Spent so far</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(totalExpenses)}</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(totalExpenses, currency)}</p>
               </div>
             </div>
 
@@ -222,6 +371,76 @@ export default function ExpensesPage() {
             </form>
           </div>
 
+          <div className="rounded-[1.5rem] border border-sky-100 bg-sky-50/70 p-6">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-700">Currency Converter</p>
+              <h3 className="mt-2 text-xl font-semibold text-slate-950">Quick convert</h3>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="grid gap-3 grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Amount</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={converterForm.amount}
+                    onChange={(event) => setConverterForm({ ...converterForm, amount: event.target.value })}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:outline-none"
+                    placeholder="100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">From</label>
+                  <select
+                    value={converterForm.from}
+                    onChange={(event) => setConverterForm({ ...converterForm, from: event.target.value })}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:outline-none"
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="AED">AED (Dh)</option>
+                    <option value="SGD">SGD (S$)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">To</label>
+                  <select
+                    value={converterForm.to}
+                    onChange={(event) => setConverterForm({ ...converterForm, to: event.target.value })}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:outline-none"
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="AED">AED (Dh)</option>
+                    <option value="SGD">SGD (S$)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-white p-4 text-center border border-sky-100 shadow-sm">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Converted Amount</p>
+                <p className="mt-1 text-2xl font-bold text-sky-800">
+                  {Number(converterForm.amount || 0).toLocaleString()} {converterForm.from} = {convertedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {converterForm.to}
+                </p>
+                {ratesUpdated && (
+                  <p className="mt-2 text-2xs text-slate-400">Live rates retrieved on {ratesUpdated}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
           <div className="space-y-4 rounded-[1.5rem] border border-slate-200 bg-white p-6">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-600">Expense log</p>
@@ -243,7 +462,7 @@ export default function ExpensesPage() {
                         {expense.note ? <p className="mt-1 text-sm text-slate-500">{expense.note}</p> : null}
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-slate-900">{formatCurrency(expense.amount)}</p>
+                        <p className="font-semibold text-slate-900">{formatCurrency(expense.amount, currency)}</p>
                         <button type="button" onClick={() => handleRemoveExpense(expense.id)} className="mt-2 text-sm font-semibold text-rose-600">
                           Remove
                         </button>
