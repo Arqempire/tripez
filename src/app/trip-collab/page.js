@@ -38,7 +38,12 @@ export default function TripCollabPage() {
   const [tripsList, setTripsList] = useState([]);
   const [selectedTripId, setSelectedTripId] = useState("");
   const [tripName, setTripName] = useState("Select a trip");
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [travellerName, setTravellerName] = useState("");
+  const [travellerRole, setTravellerRole] = useState("Companion");
+  const [editingMemberId, setEditingMemberId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [travellerToDelete, setTravellerToDelete] = useState(null);
   const [members, setMembers] = useState([
     { id: "me", name: "You", role: "Trip host", share: "100%" },
   ]);
@@ -153,24 +158,97 @@ export default function TripCollabPage() {
 
   const totalShared = useMemo(() => expenses.reduce((sum, item) => sum + item.amount, 0), [expenses]);
 
-  const handleInvite = (event) => {
+  const handleAddTraveller = (event) => {
     event.preventDefault();
-    if (!inviteEmail.trim()) {
-      setMessage("Please enter an email address.");
+    if (!travellerName.trim()) {
+      setMessage("Please enter a traveller name.");
       return;
     }
 
     const newMember = {
       id: Date.now().toString(),
-      name: inviteEmail.trim(),
-      role: "Companion",
+      name: travellerName.trim(),
+      role: travellerRole.trim() || "Companion",
       share: "Shared",
     };
 
     const nextMembers = [...members, newMember];
     setMembers(nextMembers);
-    setInviteEmail("");
-    setMessage(`Invited ${inviteEmail.trim()} to ${tripName}.`);
+    setTravellerName("");
+    setTravellerRole("Companion");
+    setMessage(`Added traveller ${newMember.name} to ${tripName}.`);
+  };
+
+  const startEditMember = (member) => {
+    if (member.id === "me") {
+      setMessage("Cannot edit the trip host.");
+      return;
+    }
+    setEditingMemberId(member.id);
+    setEditName(member.name);
+    setEditRole(member.role);
+  };
+
+  const handleSaveEditMember = (memberId) => {
+    if (!editName.trim()) {
+      setMessage("Name cannot be empty.");
+      return;
+    }
+
+    const oldMember = members.find((m) => m.id === memberId);
+    if (!oldMember) return;
+    const oldName = oldMember.name;
+    const newName = editName.trim();
+
+    // Update members list
+    const nextMembers = members.map((m) => {
+      if (m.id === memberId) {
+        return { ...m, name: newName, role: editRole.trim() || "Companion" };
+      }
+      return m;
+    });
+
+    // Propagate name change to expenses
+    const nextExpenses = expenses.map((e) => {
+      if (e.paidBy === oldName) {
+        return { ...e, paidBy: newName };
+      }
+      return e;
+    });
+
+    setMembers(nextMembers);
+    setExpenses(nextExpenses);
+    setEditingMemberId(null);
+    setMessage(`Updated details for traveller ${newName}.`);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMemberId(null);
+  };
+
+  const triggerDeleteMember = (member) => {
+    if (member.id === "me") {
+      setMessage("Cannot edit the trip host.");
+      return;
+    }
+    setTravellerToDelete(member);
+  };
+
+  const confirmDeleteMember = () => {
+    if (!travellerToDelete) return;
+    const memberId = travellerToDelete.id;
+    const deletedMemberName = travellerToDelete.name;
+
+    // Filter out member
+    const nextMembers = members.filter((m) => m.id !== memberId);
+
+    // Filter out expenses paid by him
+    const nextExpenses = expenses.filter((e) => e.paidBy !== deletedMemberName);
+
+    setMembers(nextMembers);
+    setExpenses(nextExpenses);
+    setTravellerToDelete(null);
+    setMessage(`Removed traveller ${deletedMemberName} and their associated shared expenses.`);
   };
 
   const handleAddExpense = (event) => {
@@ -258,17 +336,23 @@ export default function TripCollabPage() {
               />
             </div>
 
-            <form onSubmit={handleInvite} className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-              <label className="mb-2 block text-sm font-medium text-slate-700">Invite a friend</label>
+            <form onSubmit={handleAddTraveller} className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
+              <label className="mb-2 block text-sm font-medium text-slate-700">Add a Traveller</label>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <input
-                  value={inviteEmail}
-                  onChange={(event) => setInviteEmail(event.target.value)}
-                  className="flex-1 rounded-2xl border border-slate-300 px-4 py-3"
-                  placeholder="friend@example.com"
+                  value={travellerName}
+                  onChange={(event) => setTravellerName(event.target.value)}
+                  className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+                  placeholder="Name (e.g. Kaiser)"
                 />
-                <button type="submit" className="rounded-full bg-violet-600 px-5 py-3 font-semibold text-white transition hover:bg-violet-700">
-                  Invite
+                <input
+                  value={travellerRole}
+                  onChange={(event) => setTravellerRole(event.target.value)}
+                  className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+                  placeholder="Role (e.g. Companion)"
+                />
+                <button type="submit" className="rounded-full bg-violet-600 px-5 py-3 font-semibold text-white transition hover:bg-violet-700 text-sm">
+                  Add Traveller
                 </button>
               </div>
               {message ? <p className="mt-3 text-sm text-violet-700">{message}</p> : null}
@@ -277,15 +361,81 @@ export default function TripCollabPage() {
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-700">Travelers</p>
               <div className="mt-3 space-y-2">
-                {members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <div>
-                      <p className="font-semibold text-slate-900">{member.name}</p>
-                      <p className="text-sm text-slate-500">{member.role}</p>
+                {members.map((member) => {
+                  const isEditing = editingMemberId === member.id;
+                  return (
+                    <div key={member.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                      {isEditing ? (
+                        <div className="space-y-3">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 uppercase">Name</label>
+                              <input
+                                value={editName}
+                                onChange={(event) => setEditName(event.target.value)}
+                                className="w-full mt-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 uppercase">Role</label>
+                              <input
+                                value={editRole}
+                                onChange={(event) => setEditRole(event.target.value)}
+                                className="w-full mt-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditMember(member.id)}
+                              className="rounded-full bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 transition"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-slate-900">{member.name}</p>
+                            <p className="text-sm text-slate-500">{member.role}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">{member.share}</span>
+                            {member.id !== "me" && (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditMember(member)}
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+                                  title="Edit Traveller"
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => triggerDeleteMember(member)}
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
+                                  title="Delete Traveller"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <span className="rounded-full bg-violet-50 px-3 py-1 text-sm font-medium text-violet-700">{member.share}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -372,6 +522,47 @@ export default function TripCollabPage() {
           </div>
         </div>
       </div>
+      {/* Custom Delete Traveller Modal */}
+      {travellerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-semibold text-slate-950">Delete Traveller</h3>
+              <button
+                type="button"
+                onClick={() => setTravellerToDelete(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 text-xl mx-auto">
+                ⚠️
+              </div>
+              <p className="text-sm text-slate-600 text-center leading-relaxed font-medium">
+                travellers shared expanses will also be deleted are you sure to delete traveller
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setTravellerToDelete(null)}
+                  className="flex-1 rounded-full border border-slate-200 bg-white py-3 font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteMember}
+                  className="flex-1 rounded-full bg-rose-600 py-3 font-semibold text-white hover:bg-rose-700 transition cursor-pointer text-sm"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
