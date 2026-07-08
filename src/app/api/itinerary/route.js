@@ -14,7 +14,7 @@ export async function POST(request) {
         {
           itinerary: {
             title: `${destination} Adventure`,
-            overview: "AI itinerary generation is ready for configuration. Add a Gemini API key to enable live itinerary generation.",
+            overview: "AI itinerary generation is ready for configuration.",
             days: [
               {
                 day: 1,

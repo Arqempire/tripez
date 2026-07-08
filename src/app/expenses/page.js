@@ -67,7 +67,7 @@ export default function ExpensesPage() {
     SGD: 1.35
   });
   const [converterForm, setConverterForm] = useState({
-    amount: "100",
+    amount: "1",
     from: "USD",
     to: "INR"
   });
@@ -165,6 +165,8 @@ export default function ExpensesPage() {
       persistExpensesData(userId, expenses, budget, currency);
     }
   }, [expenses, budget, currency, userId, loading]);
+  
+  //fetching live cuurency conversion rates from free open acess API
 
   useEffect(() => {
     let active = true;
