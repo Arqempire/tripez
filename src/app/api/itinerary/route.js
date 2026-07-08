@@ -4,7 +4,9 @@ export async function POST(request) {
   try {
     const { destination, days, travelers, interests, budget, style } = await request.json();
 
-    const prompt = `Create a detailed ${days}-day personalized travel itinerary for ${destination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. Return a concise but useful plan with a title, a short overview, a day-by-day breakdown, and a list of must-know tips. Inside the 'plan' property string of each day, please use markdown bolding (**item**) to highlight key attractions, activities, locations, times of day, and restaurants so they stand out.`;
+    const cleanDestination = destination ? destination.split(",").map(s => s.trim()).filter(Boolean).join(", ") : "";
+
+    const prompt = `Create a detailed ${days}-day personalized travel itinerary for ${cleanDestination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. Return a concise but useful plan with a title, a short overview, a day-by-day breakdown, and a list of must-know tips. Inside the 'plan' property string of each day, please use markdown bolding (**item**) to highlight key attractions, activities, locations, times of day, and restaurants so they stand out.`;
 
    
     const apiKey = process.env.GEMINI_API_KEY;
@@ -13,7 +15,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           itinerary: {
-            title: `${destination} Adventure`,
+            title: `${cleanDestination} Adventure`,
             overview: "AI itinerary generation is ready for configuration.",
             days: [
               {
@@ -81,7 +83,7 @@ export async function POST(request) {
       parsed = JSON.parse(cleaned);
     } catch {
       parsed = {
-        title: `${destination} Adventure`,
+        title: `${cleanDestination} Adventure`,
         overview: "A tailored itinerary is ready to review.",
         days: [{ day: 1, title: "Arrival and local highlights", plan: cleaned }],
         tips: ["Adjust the plan to fit your travel pace and interests."],

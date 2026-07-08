@@ -35,7 +35,8 @@ const hashStringToIndexes = (str, count, maxIndex) => {
 };
 
 const buildTripGallery = (destination = "") => {
-  const lowerDestination = (destination || "").toLowerCase();
+  const cleanDest = destination ? destination.split(",").map(s => s.trim()).filter(Boolean).join(", ") : "";
+  const lowerDestination = cleanDest.toLowerCase();
 
   if (lowerDestination.includes("gulmarg") || lowerDestination.includes("snow") || lowerDestination.includes("winter")) {
     return [
@@ -134,31 +135,39 @@ const parseDestination = (destinationStr) => {
   
   const parts = destinationStr.split(",").map(s => s.trim());
   
-  if (parts.length >= 3) {
+  if (parts.length === 3) {
     const place = parts[0];
     const state = parts[1];
     const country = parts[2];
     
     if (ALL_COUNTRIES.includes(country)) {
       result.selectedCountry = country;
-      
-      const states = LOCATION_DATA[country];
+    } else if (country) {
+      result.selectedCountry = "custom";
+      result.customCountry = country;
+    }
+    
+    if (state) {
+      const states = LOCATION_DATA[result.selectedCountry];
       if (states && states[state]) {
         result.selectedState = state;
-        if (states[state].includes(place)) {
-          result.selectedPlace = place;
-        } else {
-          result.selectedPlace = "custom";
-          result.customPlace = place;
-        }
       } else {
         result.selectedState = "custom";
         result.customState = state;
+      }
+    }
+    
+    if (place) {
+      const states = LOCATION_DATA[result.selectedCountry];
+      if (states && result.selectedState && states[result.selectedState] && states[result.selectedState].includes(place)) {
+        result.selectedPlace = place;
+      } else {
         result.selectedPlace = "custom";
         result.customPlace = place;
       }
-      return result;
     }
+    
+    return result;
   }
   
   if (parts.length === 2) {
@@ -213,6 +222,12 @@ const parseDestination = (destinationStr) => {
   return result;
 };
 
+const formatDestinationDisplay = (destinationStr) => {
+  if (!destinationStr) return "";
+  const parts = destinationStr.split(",").map(s => s.trim()).filter(Boolean);
+  return parts.join(", ");
+};
+
 function PlannerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -245,14 +260,12 @@ function PlannerContent() {
 
   const getDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
     const country = cSel === "custom" ? cCust : cSel;
-    const state = sSel === "custom" ? sCust : sSel;
-    const place = pSel === "custom" ? pCust : pSel;
+    const hasData = country && country !== "custom" && Boolean(LOCATION_DATA[country]);
     
-    let parts = [];
-    if (place) parts.push(place);
-    if (state) parts.push(state);
-    if (country) parts.push(country);
-    return parts.join(", ");
+    const state = hasData ? (sSel === "custom" ? sCust : sSel) : (sCust || sSel);
+    const place = hasData ? (pSel === "custom" ? pCust : pSel) : (pCust || pSel);
+    
+    return `${place || ""}, ${state || ""}, ${country || ""}`;
   };
 
   const syncDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
@@ -503,7 +516,7 @@ function PlannerContent() {
   const summary = useMemo(() => {
     if (!itinerary) return null;
     return {
-      title: itinerary.title || `${form.destination} Adventure`,
+      title: itinerary.title || `${formatDestinationDisplay(form.destination)} Adventure`,
       overview: itinerary.overview || "A tailored plan is ready.",
       days: itinerary.days || [],
       tips: itinerary.tips || [],
@@ -583,7 +596,7 @@ function PlannerContent() {
               <div className="relative h-64 overflow-hidden">
                 <Image
                   src={gallery[0]}
-                  alt={plannerDestination}
+                  alt={formatDestinationDisplay(plannerDestination)}
                   fill
                   loading="eager"
                   sizes="(max-width: 1024px) 100vw, 45vw"
@@ -592,7 +605,7 @@ function PlannerContent() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                   <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-200">Destination explorer</p>
-                  <h2 className="mt-2 text-2xl font-semibold">{plannerDestination}</h2>
+                  <h2 className="mt-2 text-2xl font-semibold">{formatDestinationDisplay(plannerDestination)}</h2>
                   <p className="mt-2 max-w-xl text-sm leading-6 text-slate-200">
                     Step into the place before you plan it—browse the mood, highlights, and signature experiences that make the destination special.
                   </p>

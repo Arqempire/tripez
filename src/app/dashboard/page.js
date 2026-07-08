@@ -35,7 +35,8 @@ const hashStringToIndexes = (str, count, maxIndex) => {
 };
 
 const buildTripGallery = (destination) => {
-  const lowerDestination = (destination || "").toLowerCase();
+  const cleanDest = destination ? destination.split(",").map(s => s.trim()).filter(Boolean).join(", ") : "";
+  const lowerDestination = cleanDest.toLowerCase();
 
   if (lowerDestination.includes("gulmarg") || lowerDestination.includes("snow") || lowerDestination.includes("winter")) {
     return [
@@ -148,31 +149,39 @@ const parseDestination = (destinationStr) => {
   
   const parts = destinationStr.split(",").map(s => s.trim());
   
-  if (parts.length >= 3) {
+  if (parts.length === 3) {
     const place = parts[0];
     const state = parts[1];
     const country = parts[2];
     
     if (ALL_COUNTRIES.includes(country)) {
       result.selectedCountry = country;
-      
-      const states = LOCATION_DATA[country];
+    } else if (country) {
+      result.selectedCountry = "custom";
+      result.customCountry = country;
+    }
+    
+    if (state) {
+      const states = LOCATION_DATA[result.selectedCountry];
       if (states && states[state]) {
         result.selectedState = state;
-        if (states[state].includes(place)) {
-          result.selectedPlace = place;
-        } else {
-          result.selectedPlace = "custom";
-          result.customPlace = place;
-        }
       } else {
         result.selectedState = "custom";
         result.customState = state;
+      }
+    }
+    
+    if (place) {
+      const states = LOCATION_DATA[result.selectedCountry];
+      if (states && result.selectedState && states[result.selectedState] && states[result.selectedState].includes(place)) {
+        result.selectedPlace = place;
+      } else {
         result.selectedPlace = "custom";
         result.customPlace = place;
       }
-      return result;
     }
+    
+    return result;
   }
   
   if (parts.length === 2) {
@@ -227,6 +236,12 @@ const parseDestination = (destinationStr) => {
   return result;
 };
 
+const formatDestinationDisplay = (destinationStr) => {
+  if (!destinationStr) return "";
+  const parts = destinationStr.split(",").map(s => s.trim()).filter(Boolean);
+  return parts.join(", ");
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -256,14 +271,12 @@ export default function DashboardPage() {
 
   const getDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
     const country = cSel === "custom" ? cCust : cSel;
-    const state = sSel === "custom" ? sCust : sSel;
-    const place = pSel === "custom" ? pCust : pSel;
+    const hasData = country && country !== "custom" && Boolean(LOCATION_DATA[country]);
     
-    let parts = [];
-    if (place) parts.push(place);
-    if (state) parts.push(state);
-    if (country) parts.push(country);
-    return parts.join(", ");
+    const state = hasData ? (sSel === "custom" ? sCust : sSel) : (sCust || sSel);
+    const place = hasData ? (pSel === "custom" ? pCust : pSel) : (pCust || pSel);
+    
+    return `${place || ""}, ${state || ""}, ${country || ""}`;
   };
 
   const syncDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
@@ -817,7 +830,7 @@ export default function DashboardPage() {
                           <div className="relative h-36 w-full">
                             <Image
                               src={sanitizedImage}
-                              alt={trip.destination}
+                              alt={formatDestinationDisplay(trip.destination)}
                               fill
                               loading="eager"
                               sizes="(max-width: 1024px) 100vw, 45vw"
@@ -829,7 +842,7 @@ export default function DashboardPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <h3 className="text-lg font-semibold text-slate-950">{trip.name}</h3>
-                              <p className="mt-1 text-sm text-slate-600">{trip.destination}</p>
+                              <p className="mt-1 text-sm text-slate-600">{formatDestinationDisplay(trip.destination)}</p>
                               <p className="mt-2 text-sm text-slate-500">
                                 {formatDateRange(trip.dates)} · {travelerCount} traveler{travelerCount === "1" ? "" : "s"}
                               </p>

@@ -21,7 +21,7 @@ const features = [
     title: "Trip confidence",
     description:
       "Get packing checklists, local tips, and backup ideas that keep your plans flexible.",
-    icon: "✨",
+    //icon: "✨",
   },
 ];
 
