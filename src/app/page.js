@@ -97,7 +97,7 @@ export default function Home() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.2),_transparent_35%),linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-8">
         <div className="flex items-center gap-3 text-lg font-semibold tracking-tight">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600 text-xl text-white shadow-lg shadow-sky-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-xl text-white shadow-lg shadow-sky-200">
             ✈
           </div>
           <span>TripEZ</span>
@@ -146,7 +146,7 @@ export default function Home() {
               </a>
             </div>
             <p className="mt-6 text-sm text-slate-600">
-              New users can register in seconds. Existing users can sign in to continue planning.
+             Please register first if you are new to Tripez.
             </p>
             <div className="mt-8 flex flex-wrap gap-4 text-sm text-slate-600">
               <div className="rounded-full bg-white/80 px-3 py-2 shadow-sm">
@@ -205,7 +205,7 @@ export default function Home() {
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {steps.map((step, index) => (
               <div key={step} className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-600 text-sm font-semibold text-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
                   0{index + 1}
                 </div>
                 <p className="mt-4 text-sm leading-7 text-slate-600">{step}</p>
