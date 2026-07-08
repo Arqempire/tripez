@@ -146,7 +146,7 @@ export default function Home() {
               </a>
             </div>
             <p className="mt-6 text-sm text-slate-600">
-             Please register first if you are new to Tripez.
+             Please register first to get started with Tripez.
             </p>
             <div className="mt-8 flex flex-wrap gap-4 text-sm text-slate-600">
               <div className="rounded-full bg-white/80 px-3 py-2 shadow-sm">
