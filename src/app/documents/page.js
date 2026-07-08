@@ -288,7 +288,8 @@ export default function DocumentsPage() {
           </div>
 
           <Link href="/dashboard" className="rounded-full border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700">
-             Back to dashboard
+            <span aria-hidden="true">←</span>
+            <span>Back to dashboard</span>
           </Link>
         </div>
 
