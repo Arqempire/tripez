@@ -284,11 +284,11 @@ export default function DocumentsPage() {
             <p className="mt-3 max-w-2xl text-lg text-slate-600">
               Save passport details, booking references, tickets, insurance, and other frequently used trip documents in one place.
             </p>
-            <p className="mt-2 text-sm font-medium text-sky-700">Files are uploaded to Supabase Storage and linked to your account.</p>
+            <p className="mt-2 text-sm font-medium text-sky-700">Files are uploaded to Cloud Storage and linked to your account.</p>
           </div>
 
           <Link href="/dashboard" className="rounded-full border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700">
-            Back to dashboard
+             Back to dashboard
           </Link>
         </div>
 
@@ -305,12 +305,12 @@ export default function DocumentsPage() {
                 value={form.title}
                 onChange={(event) => setForm((currentForm) => ({ ...currentForm, title: event.target.value }))}
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Passport"
+                placeholder="Ex : Passport"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Attach file (optional)</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Attach file </label>
               <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 shadow-sm transition hover:border-sky-400 hover:bg-sky-50">
                 <span className="text-sm font-medium text-slate-700">{form.file ? form.file.name : "Choose file"}</span>
                 <span className="rounded-full bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white">Browse</span>
@@ -321,13 +321,13 @@ export default function DocumentsPage() {
                   className="sr-only"
                 />
               </label>
-              <p className="mt-2 text-xs text-slate-500">You can add a title and upload a file in the same step.</p>
+             
               {form.file ? <p className="mt-2 text-sm font-medium text-sky-700">Selected file: {form.file.name}</p> : null}
             </div>
 
             {uploadMessage ? <p className="rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-700">{uploadMessage}</p> : null}
 
-            <button type="submit" className="w-full rounded-full bg-sky-600 px-5 py-3 font-semibold text-white transition hover:bg-sky-700">
+            <button type="submit" className="w-full rounded-full bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700">
               Save document
             </button>
           </form>

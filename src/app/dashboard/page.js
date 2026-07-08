@@ -590,7 +590,7 @@ export default function DashboardPage() {
 
               <Link href="/expenses" className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-100">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">💸</div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">₹</div>
                   <div>
                     <p className="text-sm font-semibold text-amber-700">Expense Tracker</p>
                     <p className="text-sm text-slate-600">Track travel spending and stay on budget</p>
@@ -624,7 +624,7 @@ export default function DashboardPage() {
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Summer in Tokyo"
+                placeholder="Winter in Kashmir"
               />
             </div>
 
@@ -760,7 +760,7 @@ export default function DashboardPage() {
                 value={form.interests}
                 onChange={(event) => setForm({ ...form, interests: event.target.value })}
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="food, nightlife, museums"
+                placeholder="Food, nightlife, museums"
               />
             </div>
 
@@ -770,14 +770,14 @@ export default function DashboardPage() {
                 value={form.notes}
                 onChange={(event) => setForm({ ...form, notes: event.target.value })}
                 className="min-h-24 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Any preferences or must-sees?"
+                placeholder="Any other preferences or must-sees?"
               />
             </div>
 
               <button
                 type="submit"
                 disabled={savingTrip}
-                className="w-full rounded-full bg-sky-600 px-5 py-3 font-semibold text-white transition hover:bg-sky-700"
+                className="w-full rounded-full bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
               >
                 {savingTrip ? "Saving..." : "Save trip"}
               </button>
@@ -842,7 +842,7 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2">
                               <Link
                                 href={`/planner?tripId=${encodeURIComponent(trip.id)}`}
-                                className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+                                className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-600"
                                 onClick={(event) => event.stopPropagation()}
                               >
                                 {trip.itinerary ? "View itinerary" : "Plan trip"}

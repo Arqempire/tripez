@@ -107,7 +107,7 @@ export default function RegisterPage() {
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                placeholder="Alex Morgan"
+                placeholder="Your Name"
               />
             </div>
 
@@ -165,7 +165,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full bg-sky-600 px-5 py-3 font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-full bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>

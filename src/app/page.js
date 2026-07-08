@@ -9,13 +9,13 @@ const features = [
     title: "Smart itineraries",
     description:
       "Turn a rough idea into a day-by-day plan with stay, food, and activity suggestions.",
-   // icon: "🧭",
+   
   },
   {
     title: "Budget-aware choices",
     description:
       "Keep your trip affordable with spending estimates and recommendations that fit your style.",
-    //icon: "💸",
+
   },
   {
     title: "Trip confidence",
@@ -44,7 +44,7 @@ export default function Home() {
         return;
       }
 
-      // If this is a password recovery link, do not redirect to dashboard on mount
+      //password recovery link
       if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
         setCheckingSession(false);
         return;
@@ -71,7 +71,7 @@ export default function Home() {
       if (event === "PASSWORD_RECOVERY") {
         router.replace("/reset-password");
       } else if (session?.user) {
-        // Double check hash parameters to prevent overriding recovery redirects
+        // Double checking hash parameters to prevent overriding recovery redirects
         if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
           return;
         }
@@ -122,21 +122,21 @@ export default function Home() {
         <section className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="max-w-2xl">
             <span className="inline-flex items-center rounded-full border border-sky-200 bg-white/70 px-3 py-1 text-sm font-medium text-sky-700 shadow-sm">
-              Your personal travel sidekick
+              Your personal travel buddy
             </span>
             <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
               Plan smoother trips with less stress and more joy.
             </h1>
             <p className="mt-5 text-lg leading-8 text-slate-600 sm:text-xl">
-              TripEZ helps you craft beautiful adventures around your budget, pace, and interests in minutes.
+              TripEZ helps you craft beautiful adventures around your budget, pace, and interests in minutes now with AI integration ❤️
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
                 id="start"
                 href="/register"
-                className="rounded-full bg-sky-600 px-6 py-3 text-center font-semibold text-white shadow-lg shadow-sky-200 transition hover:bg-sky-700"
+                className="rounded-full bg-slate-900 px-6 py-3 text-center font-semibold text-white shadow-lg shadow-sky-200 transition hover:bg-sky-700"
               >
-                Create my trip
+                Register
               </a>
               <a
                 href="/login"
@@ -145,7 +145,7 @@ export default function Home() {
                 Log in
               </a>
             </div>
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-6 text-sm text-slate-600">
               New users can register in seconds. Existing users can sign in to continue planning.
             </p>
             <div className="mt-8 flex flex-wrap gap-4 text-sm text-slate-600">
@@ -153,10 +153,10 @@ export default function Home() {
                 ✨ Fast itinerary drafts
               </div>
               <div className="rounded-full bg-white/80 px-3 py-2 shadow-sm">
-                🗺️ Local recommendations
+                  Local recommendations
               </div>
               <div className="rounded-full bg-white/80 px-3 py-2 shadow-sm">
-                🧳 Smart packing lists
+                   Smart travel tips
               </div>
             </div>
           </div>
