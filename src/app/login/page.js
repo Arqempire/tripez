@@ -153,7 +153,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400 animate-none"
+                  className="w-full rounded-2xl pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400 animate-none"
                   placeholder="you@example.com"
                 />
               </div>
@@ -188,7 +188,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                  className="w-full rounded-2xl pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
                   placeholder="••••••••"
                 />
               </div>
@@ -257,7 +257,7 @@ export default function LoginPage() {
                     required
                     value={resetEmail}
                     onChange={(event) => setResetEmail(event.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                    className="w-full rounded-2xl pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
                     placeholder="you@example.com"
                   />
                 </div>

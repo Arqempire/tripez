@@ -182,7 +182,7 @@ export default function ResetPasswordPage() {
                 required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                className="w-full rounded-2xl pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
                 placeholder="Min 6 characters"
               />
             </div>
@@ -203,7 +203,7 @@ export default function ResetPasswordPage() {
                 required
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                className="w-full rounded-2xl pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
                 placeholder="Re-enter password"
               />
             </div>
