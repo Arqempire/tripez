@@ -19,6 +19,80 @@ const CURRENCY_SYMBOLS = {
   SGD: "S$"
 };
 
+// Inline SVG Icon components for unified sidebar navigation
+const LogoIcon = () => (
+  <svg className="h-6 w-6 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+  </svg>
+);
+
+const DashboardIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="9" rx="1.5" />
+    <rect x="14" y="3" width="7" height="5" rx="1.5" />
+    <rect x="14" y="12" width="7" height="9" rx="1.5" />
+    <rect x="3" y="16" width="7" height="5" rx="1.5" />
+  </svg>
+);
+
+const DocumentIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
+const ExpenseIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23" />
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </svg>
+);
+
+const CollabIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+const LogoutIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+const MenuIcon = () => (
+  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="18" x2="21" y2="18" />
+  </svg>
+);
+
+const getInitials = (name) => {
+  if (!name) return "TE";
+  const parts = name.split(" ").filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return parts[0] ? parts[0][0].toUpperCase() : "TE";
+};
+
 const formatCurrency = (value, currencyCode = "INR") => {
   const symbol = CURRENCY_SYMBOLS[currencyCode] || "₹";
   return `${symbol}${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -49,11 +123,13 @@ export default function ExpensesPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
+  const [userName, setUserName] = useState("");
   const [budget, setBudget] = useState("1200");
   const [currency, setCurrency] = useState("INR");
   const [expenses, setExpenses] = useState([]);
   const [form, setForm] = useState({ title: "", amount: "", category: "Food", note: "" });
   const [message, setMessage] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [rates, setRates] = useState({
     USD: 1,
@@ -90,7 +166,9 @@ export default function ExpensesPage() {
       }
 
       const currentUserId = session.user.id;
+      const profileName = session.user?.user_metadata?.full_name || session.user?.email || "your account";
       setUserId(currentUserId);
+      setUserName(profileName);
 
       // Try loading from user metadata first
       let userMetadataExpenses = session.user?.user_metadata?.expenses;
@@ -166,8 +244,7 @@ export default function ExpensesPage() {
     }
   }, [expenses, budget, currency, userId, loading]);
   
-  //fetching live cuurency conversion rates from free open acess API
-
+  // fetching live currency conversion rates from free open access API
   useEffect(() => {
     let active = true;
     const fetchRates = async () => {
@@ -236,247 +313,477 @@ export default function ExpensesPage() {
   const totalExpenses = useMemo(() => expenses.reduce((sum, expense) => sum + expense.amount, 0), [expenses]);
   const remainingBudget = Number(budget || 0) - totalExpenses;
 
+  const handleSignOut = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    router.replace("/");
+  };
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">
-        Preparing your expense tracker...
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans">
+        <div className="relative flex flex-col items-center gap-4">
+          <svg className="animate-spin h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <p className="text-xs font-bold tracking-wide text-slate-500 uppercase tracking-widest animate-pulse">Preparing expense tracker...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] px-6 py-16 text-slate-900">
-      <div className="mx-auto max-w-6xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl shadow-slate-200/70">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-600">Expense Tracker</p>
-            <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Keep your trip spending in check</h1>
-            <p className="mt-3 max-w-2xl text-lg text-slate-600">Track travel purchases, compare them against your budget, and see where your money is going.</p>
-          </div>
-
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
-          >
-            <span aria-hidden="true">←</span>
-            <span>Back to dashboard</span>
+    <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased">
+      
+      {/* DESKTOP SIDEBAR NAVIGATION */}
+      <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
+        <div className="space-y-8">
+          <Link href="/dashboard" className="flex items-center gap-3 px-2 hover:opacity-85 transition-opacity">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
+              <LogoIcon />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">TripEZ</span>
           </Link>
+
+          <nav className="space-y-1.5 font-sans">
+            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+              <DashboardIcon />
+              <span className="text-sm">Dashboard</span>
+            </Link>
+            
+            <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+              <DocumentIcon />
+              <span className="text-sm">Document Vault</span>
+            </Link>
+
+            <Link href="/expenses" className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
+              <ExpenseIcon />
+              <span className="text-sm">Expense Tracker</span>
+            </Link>
+
+            <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+              <CollabIcon />
+              <span className="text-sm">Collaboration</span>
+            </Link>
+          </nav>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-6">
-            <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-amber-50 p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-700">Budget overview</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-950">Stay on top of your trip costs</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Base</label>
-                  <select
-                    value={currency}
-                    onChange={(event) => setCurrency(event.target.value)}
-                    className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-amber-500 focus:outline-none"
-                  >
-                    <option value="INR">INR (₹)</option>
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="JPY">JPY (¥)</option>
-                    <option value="CAD">CAD (C$)</option>
-                    <option value="AUD">AUD (A$)</option>
-                    <option value="AED">AED (Dh)</option>
-                    <option value="SGD">SGD (S$)</option>
-                  </select>
-                </div>
-                <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm border border-amber-100">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Remaining</p>
-                  <p className="text-lg font-semibold text-slate-900">{formatCurrency(remainingBudget, currency)}</p>
-                </div>
-              </div>
+        {/* User profile bottom item */}
+        <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 font-sans">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
+              {getInitials(userName)}
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-amber-200 bg-white p-4">
-                <p className="text-sm text-slate-500">Trip budget</p>
-                <input
-                  type="number"
-                  min="0"
-                  value={budget}
-                  onChange={(event) => setBudget(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3"
-                  placeholder="1200"
-                />
-              </div>
-              <div className="rounded-2xl border border-dashed border-amber-200 bg-white p-4">
-                <p className="text-sm text-slate-500">Spent so far</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(totalExpenses, currency)}</p>
-              </div>
+            <div className="overflow-hidden">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
+              <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
             </div>
+          </div>
+          <button 
+            onClick={handleSignOut}
+            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+            title="Sign Out"
+          >
+            <LogoutIcon />
+          </button>
+        </div>
+      </aside>
 
-            <form onSubmit={handleAddExpense} className="space-y-3 rounded-[1.25rem] border border-slate-200 bg-white p-4">
-              <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Expense title</label>
-                  <input
-                    value={form.title}
-                    onChange={(event) => setForm((currentForm) => ({ ...currentForm, title: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                    placeholder="Hotel"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Amount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.amount}
-                    onChange={(event) => setForm((currentForm) => ({ ...currentForm, amount: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                    placeholder="120"
-                  />
-                </div>
-              </div>
+      {/* MOBILE HEADER BAR */}
+      <header className="flex md:hidden items-center justify-between px-6 py-4 bg-white/70 border-b border-slate-200/60 backdrop-blur-md fixed top-0 left-0 right-0 z-40">
+        <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-85 transition-opacity">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-md">
+            <LogoIcon />
+          </div>
+          <span className="text-lg font-bold tracking-tight text-slate-900">TripEZ</span>
+        </Link>
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          <MenuIcon />
+        </button>
+      </header>
 
-              <div className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr]">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Category</label>
-                  <select
-                    value={form.category}
-                    onChange={(event) => setForm((currentForm) => ({ ...currentForm, category: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                  >
-                    <option value="Food">Food</option>
-                    <option value="Stay">Stay</option>
-                    <option value="Transport">Transport</option>
-                    <option value="Activities">Activities</option>
-                    <option value="Other">Other</option>
-                  </select>
+      {/* MOBILE DRAWER OVERLAY */}
+      <div className={`fixed inset-0 z-50 transition-all duration-300 md:hidden ${isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
+        <div 
+          className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+        <div className={`absolute top-0 bottom-0 left-0 w-72 bg-white p-6 shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <Link href="/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 hover:opacity-85 transition-opacity">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
+                  <LogoIcon />
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Notes</label>
-                  <input
-                    value={form.note}
-                    onChange={(event) => setForm((currentForm) => ({ ...currentForm, note: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                    placeholder="Breakfast, tickets, etc."
-                  />
-                </div>
-              </div>
-
-              {message ? <p className="text-sm text-amber-700">{message}</p> : null}
-
-              <button type="submit" className="w-full rounded-full bg-amber-600 px-5 py-3 font-semibold text-white transition hover:bg-amber-700">
-                Add expense
+                <span className="text-xl font-bold tracking-tight text-slate-900">TripEZ</span>
+              </Link>
+              <button 
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors"
+              >
+                <CloseIcon />
               </button>
-            </form>
+            </div>
+
+            <nav className="space-y-1.5">
+              <Link href="/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+                <DashboardIcon />
+                <span className="text-sm">Dashboard</span>
+              </Link>
+              
+              <Link href="/documents" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+                <DocumentIcon />
+                <span className="text-sm">Document Vault</span>
+              </Link>
+
+              <Link href="/expenses" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
+                <ExpenseIcon />
+                <span className="text-sm">Expense Tracker</span>
+              </Link>
+
+              <Link href="/trip-collab" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+                <CollabIcon />
+                <span className="text-sm">Collaboration</span>
+              </Link>
+            </nav>
           </div>
 
-          <div className="rounded-[1.5rem] border border-sky-100 bg-sky-50/70 p-6">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-700">Currency Converter</p>
-              <h3 className="mt-2 text-xl font-semibold text-slate-950">Quick convert</h3>
-            </div>
-
-            <div className="mt-4 space-y-4">
-              <div className="grid gap-3 grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Amount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={converterForm.amount}
-                    onChange={(event) => setConverterForm({ ...converterForm, amount: event.target.value })}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:outline-none"
-                    placeholder="100"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">From</label>
-                  <select
-                    value={converterForm.from}
-                    onChange={(event) => setConverterForm({ ...converterForm, from: event.target.value })}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:outline-none"
-                  >
-                    <option value="USD">USD ($)</option>
-                    <option value="INR">INR (₹)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="JPY">JPY (¥)</option>
-                    <option value="CAD">CAD (C$)</option>
-                    <option value="AUD">AUD (A$)</option>
-                    <option value="AED">AED (Dh)</option>
-                    <option value="SGD">SGD (S$)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">To</label>
-                  <select
-                    value={converterForm.to}
-                    onChange={(event) => setConverterForm({ ...converterForm, to: event.target.value })}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:outline-none"
-                  >
-                    <option value="USD">USD ($)</option>
-                    <option value="INR">INR (₹)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="JPY">JPY (¥)</option>
-                    <option value="CAD">CAD (C$)</option>
-                    <option value="AUD">AUD (A$)</option>
-                    <option value="AED">AED (Dh)</option>
-                    <option value="SGD">SGD (S$)</option>
-                  </select>
-                </div>
+          <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
+                {getInitials(userName)}
               </div>
-
-              <div className="rounded-2xl bg-white p-4 text-center border border-sky-100 shadow-sm">
-                <p className="text-xs uppercase tracking-wider text-slate-400">Converted Amount</p>
-                <p className="mt-1 text-2xl font-bold text-sky-800">
-                  {Number(converterForm.amount || 0).toLocaleString()} {converterForm.from} = {convertedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {converterForm.to}
-                </p>
-                {ratesUpdated && (
-                  <p className="mt-2 text-2xs text-slate-400">Live rates retrieved on {ratesUpdated}</p>
-                )}
+              <div className="overflow-hidden">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
+                <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
               </div>
             </div>
-          </div>
-        </div>
-
-          <div className="space-y-4 rounded-[1.5rem] border border-slate-200 bg-white p-6">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-600">Expense log</p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-950">Your recent spending</h2>
-            </div>
-
-            {expenses.length === 0 ? (
-              <div className="rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                No expenses added yet. Start logging your trip costs.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {expenses.map((expense) => (
-                  <div key={expense.id} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-slate-900">{expense.title}</p>
-                        <p className="mt-1 text-sm text-slate-500">{expense.category}</p>
-                        {expense.note ? <p className="mt-1 text-sm text-slate-500">{expense.note}</p> : null}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-slate-900">{formatCurrency(expense.amount, currency)}</p>
-                        <button type="button" onClick={() => handleRemoveExpense(expense.id)} className="mt-2 text-sm font-semibold text-rose-600">
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <button 
+              onClick={handleSignOut}
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            >
+              <LogoutIcon />
+            </button>
           </div>
         </div>
       </div>
+
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 md:pl-64 pt-20 md:pt-0 min-h-screen">
+        <div className="px-4 py-8 sm:px-6 sm:py-16">
+          <div className="mx-auto max-w-6xl space-y-8">
+            
+            {/* Header Block */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-200/60">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 shadow-inner text-xl">
+                  ₹
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Expense Tracker</p>
+                  <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">Trip Expenses</h1>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/40 border border-slate-200/50 p-4 sm:p-6 rounded-[2rem] shadow-sm backdrop-blur-md">
+              <p className="text-sm font-semibold text-slate-600 leading-relaxed max-w-3xl">
+                Keep travel purchases cataloged, balance costs against budgets, and convert foreign currency conversions instantly in one workspace.
+              </p>
+            </div>
+
+            {/* Primary grid panels */}
+            <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+              
+              {/* Budget Overview Form */}
+              <div className="space-y-6">
+                <div className="space-y-6 rounded-3xl border border-slate-200/70 bg-amber-50/40 p-6 shadow-xl shadow-amber-100/10 backdrop-blur-md">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Budget Panel</p>
+                      <h2 className="text-lg font-bold text-slate-900 mt-1 tracking-tight">Financial Overview</h2>
+                    </div>
+                    
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative rounded-xl border border-slate-200 bg-white px-3 py-1.5 focus-within:ring-2 focus-within:ring-amber-200/50 transition">
+                        <select
+                          value={currency}
+                          onChange={(event) => setCurrency(event.target.value)}
+                          className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer pr-4 appearance-none"
+                        >
+                          <option value="INR">INR (₹)</option>
+                          <option value="USD">USD ($)</option>
+                          <option value="EUR">EUR (€)</option>
+                          <option value="GBP">GBP (£)</option>
+                          <option value="JPY">JPY (¥)</option>
+                          <option value="CAD">CAD (C$)</option>
+                          <option value="AUD">AUD (A$)</option>
+                          <option value="AED">AED (Dh)</option>
+                          <option value="SGD">SGD (S$)</option>
+                        </select>
+                        <span className="absolute right-2 top-2.5 text-slate-400 pointer-events-none">
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </span>
+                      </div>
+
+                      <div className="rounded-xl bg-white px-4 py-2.5 shadow-xs border border-amber-200/50 min-w-28 text-right shrink-0">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Remaining</p>
+                        <p className={`text-base font-bold mt-0.5 ${remainingBudget < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {formatCurrency(remainingBudget, currency)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200/60 bg-white p-4">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trip Budget</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={budget}
+                        onChange={(event) => setBudget(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4.5 py-2.5 text-sm font-semibold outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-100"
+                        placeholder="1200"
+                      />
+                    </div>
+                    <div className="rounded-2xl border border-dashed border-amber-200 bg-white p-4 flex flex-col justify-center">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Spent So Far</p>
+                      <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
+                        {formatCurrency(totalExpenses, currency)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Add Expense Mini-form */}
+                  <form onSubmit={handleAddExpense} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+                    <div className="grid gap-4 sm:grid-cols-[1.2fr_0.8fr]">
+                      <div className="relative">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Expense Title</label>
+                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                          <input
+                            value={form.title}
+                            onChange={(event) => setForm((currentForm) => ({ ...currentForm, title: event.target.value }))}
+                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none"
+                            placeholder="e.g. Hotel stay, Flight"
+                          />
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Amount ({CURRENCY_SYMBOLS[currency] || CURRENCY_SYMBOLS.INR})</label>
+                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                          <input
+                            type="number"
+                            min="0"
+                            value={form.amount}
+                            onChange={(event) => setForm((currentForm) => ({ ...currentForm, amount: event.target.value }))}
+                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none"
+                            placeholder="120"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-[0.8fr_1.2fr]">
+                      <div className="relative">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Category</label>
+                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                          <select
+                            value={form.category}
+                            onChange={(event) => setForm((currentForm) => ({ ...currentForm, category: event.target.value }))}
+                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                          >
+                            <option value="Food">Food</option>
+                            <option value="Stay">Stay</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Activities">Activities</option>
+                            <option value="Other">Other</option>
+                          </select>
+                          <span className="absolute right-3 top-3.5 text-slate-400 pointer-events-none">
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Notes</label>
+                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                          <input
+                            value={form.note}
+                            onChange={(event) => setForm((currentForm) => ({ ...currentForm, note: event.target.value }))}
+                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none"
+                            placeholder="e.g. Dinner at Dal lake, taxi fare"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {message ? (
+                      <p className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-2.5 rounded-xl border border-amber-100 animate-fade-in">{message}</p>
+                    ) : null}
+
+                    <button 
+                      type="submit" 
+                      className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 py-3 text-xs font-bold text-white shadow-md transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
+                    >
+                      Add Purchase
+                    </button>
+                  </form>
+                </div>
+
+                {/* Currency Converter */}
+                <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-100/50 backdrop-blur-md space-y-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-sky-700">Currency Converter</p>
+                    <h3 className="text-base font-bold text-slate-900 mt-1 tracking-tight">Convert Values Instantly</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid gap-3.5 grid-cols-3">
+                      <div>
+                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Amount</label>
+                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                          <input
+                            type="number"
+                            min="0"
+                            value={converterForm.amount}
+                            onChange={(event) => setConverterForm({ ...converterForm, amount: event.target.value })}
+                            className="w-full px-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none"
+                            placeholder="100"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">From</label>
+                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                          <select
+                            value={converterForm.from}
+                            onChange={(event) => setConverterForm({ ...converterForm, from: event.target.value })}
+                            className="w-full pl-3 pr-6 py-2 bg-transparent text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer"
+                          >
+                            <option value="USD">USD ($)</option>
+                            <option value="INR">INR (₹)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="CAD">CAD (C$)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="AED">AED (Dh)</option>
+                            <option value="SGD">SGD (S$)</option>
+                          </select>
+                          <span className="absolute right-2 top-2.5 text-slate-400 pointer-events-none">
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">To</label>
+                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                          <select
+                            value={converterForm.to}
+                            onChange={(event) => setConverterForm({ ...converterForm, to: event.target.value })}
+                            className="w-full pl-3 pr-6 py-2 bg-transparent text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer"
+                          >
+                            <option value="USD">USD ($)</option>
+                            <option value="INR">INR (₹)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="CAD">CAD (C$)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="AED">AED (Dh)</option>
+                            <option value="SGD">SGD (S$)</option>
+                          </select>
+                          <span className="absolute right-2 top-2.5 text-slate-400 pointer-events-none">
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-sky-50/60 border border-sky-100 p-4 text-center shadow-xs">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Converted Amount</p>
+                      <p className="mt-1 text-xl font-bold text-sky-800 tracking-tight leading-none">
+                        {Number(converterForm.amount || 0).toLocaleString()} {converterForm.from} = {convertedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {converterForm.to}
+                      </p>
+                      {ratesUpdated && (
+                        <p className="mt-2 text-[9px] font-semibold text-slate-400">Rates updated on {ratesUpdated}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: Recent Spending list */}
+              <section className="space-y-6">
+                <div className="space-y-5 rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-100/50 backdrop-blur-md flex flex-col justify-between min-h-[300px]">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                      Expense Ledger
+                      <span className="bg-amber-50 border border-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-bold shadow-xs">
+                        {expenses.length}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">Scrollable history of itemized costs on your adventure board.</p>
+                  </div>
+
+                  {expenses.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-slate-500 text-center">
+                      <svg className="h-10 w-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm font-semibold">No expenses logged yet</p>
+                      <p className="text-xs text-slate-400 mt-1">Record hotel bookings or meal costs on the left.</p>
+                    </div>
+                  ) : (
+                    <div className="flex-1 space-y-3 overflow-y-auto max-h-[520px] pr-1 pt-2">
+                      {expenses.map((expense) => (
+                        <div 
+                          key={expense.id} 
+                          className="rounded-2xl border border-slate-200 bg-white p-4.5 flex items-center justify-between hover:shadow-md transition-all duration-300 shadow-xs group"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-slate-900">{expense.title}</p>
+                            <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-400">
+                              <span className="bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5">{expense.category}</span>
+                              {expense.note ? <span className="truncate max-w-[200px]">{expense.note}</span> : null}
+                            </div>
+                          </div>
+                          <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                            <p className="text-base font-bold text-slate-900 tracking-tight">
+                              {formatCurrency(expense.amount, currency)}
+                            </p>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveExpense(expense.id)} 
+                              className="text-xs font-bold text-rose-600 hover:text-rose-700 transition cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+            </div>
+          </div>
+        </div>
+      </main>
+
     </div>
   );
 }

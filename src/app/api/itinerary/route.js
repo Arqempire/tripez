@@ -6,9 +6,8 @@ export async function POST(request) {
 
     const cleanDestination = destination ? destination.split(",").map(s => s.trim()).filter(Boolean).join(", ") : "";
 
-    const prompt = `Create a detailed ${days}-day personalized travel itinerary for ${cleanDestination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. Return a concise but useful plan with a title, a short overview, a day-by-day breakdown, and a list of must-know tips. Inside the 'plan' property string of each day, please use markdown bolding (**item**) to highlight key attractions, activities, locations, times of day, and restaurants so they stand out.`;
+    const prompt = `Create a concise and meaningful ${days}-day travel itinerary for ${cleanDestination}. Travelers: ${travelers}. Interests: ${interests}. Budget: ${budget}. Style: ${style}. For each day's 'plan' string, you MUST output exactly three chronological activity slots: Morning, Afternoon, and Evening. Each slot must contain one key activity and a recommended local place to eat (Breakfast, Lunch, or Dinner). Use markdown bolding (**item**) for time slots, attractions, and restaurant recommendations.`;
 
-   
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -16,15 +15,15 @@ export async function POST(request) {
         {
           itinerary: {
             title: `${cleanDestination} Adventure`,
-            overview: "AI itinerary generation is ready for configuration.",
+            overview: "A highly detailed sample travel plan is ready. Set your GEMINI_API_KEY in your environment to activate customized AI planning.",
             days: [
               {
                 day: 1,
-                title: "Starter plan",
-                plan: "Add your Gemini API key to generate a personalized itinerary.",
+                title: "Arrival & Local Exploration",
+                plan: "**Morning (08:00 AM - 12:00 PM)**: Check into your hotel, followed by **Breakfast** at **The Corner Bakery** for hot regional pastries.\n\n**Afternoon (12:00 PM - 05:00 PM)**: Walking tour of historic city center sights, followed by **Lunch** at **Bistro Garden** to savor signature local dishes.\n\n**Evening (05:00 PM - 10:00 PM)**: Evening museum visit, followed by **Dinner** at **Heritage Kitchen** for authentic regional gastronomy.",
               },
             ],
-            tips: ["Set GEMINI_API_KEY in your environment to activate AI generation."],
+            tips: ["Set GEMINI_API_KEY in your environment to activate full AI generation."],
           },
         },
         { status: 200 }
@@ -44,7 +43,7 @@ export async function POST(request) {
           systemInstruction: {
             parts: [
               {
-                text: "You are a travel planning assistant. You MUST respond with valid JSON containing the following structure: { \"title\": \"string\", \"overview\": \"string\", \"days\": [ { \"day\": number, \"title\": \"string\", \"plan\": \"string\" } ], \"tips\": [ \"string\" ] }.",
+                text: "You are a professional travel planner. You MUST respond with valid JSON containing the structure: { \"title\": \"string\", \"overview\": \"string\", \"days\": [ { \"day\": number, \"title\": \"string\", \"plan\": \"string\" } ], \"tips\": [ \"string\" ] }.\n\nFor each day's 'plan' string, you MUST output exactly three chronological slots: Morning, Afternoon, and Evening. Each slot must contain one key activity and a specific recommended local restaurant matching the budget style (Breakfast for Morning, Lunch for Afternoon, Dinner for Evening).\n\nKeep descriptions brief, concise, and meaningful. Use markdown bolding (**item**) for time headers and restaurant names.\n\nExample of a single day's plan formatting to match exactly:\n\"**Morning (08:00 AM - 12:00 PM)**: Sightseeing at the city center, followed by **Breakfast** at **Stream Cafe** for traditional local pastries.\\n\\n**Afternoon (12:00 PM - 05:00 PM)**: Visit local waterfront gardens, followed by **Lunch** at **Mughal Kitchen** for signature specialties.\\n\\n**Evening (05:00 PM - 10:00 PM)**: Relaxing waterfront walk, followed by **Dinner** at **Lhasa Grill** to try authentic regional dishes.\"",
               },
             ],
           },
