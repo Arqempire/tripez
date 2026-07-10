@@ -63,6 +63,13 @@ const CollabIcon = () => (
   </svg>
 );
 
+const SettingsIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+);
+
 const LogoutIcon = () => (
   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -315,6 +322,55 @@ export default function ExpensesPage() {
   const totalExpenses = useMemo(() => expenses.reduce((sum, expense) => sum + expense.amount, 0), [expenses]);
   const remainingBudget = Number(budget || 0) - totalExpenses;
 
+  const spentPercentage = useMemo(() => {
+    const b = Number(budget) || 0;
+    if (b <= 0) return 0;
+    return (totalExpenses / b) * 100;
+  }, [totalExpenses, budget]);
+
+  const categoryTotals = useMemo(() => {
+    const totals = { Food: 0, Stay: 0, Transport: 0, Activities: 0, Other: 0 };
+    expenses.forEach((expense) => {
+      const cat = expense.category || "Other";
+      if (totals[cat] !== undefined) {
+        totals[cat] += expense.amount;
+      } else {
+        totals.Other += expense.amount;
+      }
+    });
+    return totals;
+  }, [expenses]);
+
+  const donutSegments = useMemo(() => {
+    let accumulatedPercent = 0;
+    const colors = {
+      Food: "#10b981",       // emerald-500
+      Stay: "#0ea5e9",       // sky-500
+      Transport: "#6366f1",  // indigo-500
+      Activities: "#f59e0b", // amber-500
+      Other: "#94a3b8"       // slate-400
+    };
+
+    return Object.entries(categoryTotals)
+      .map(([category, amount]) => {
+        if (amount === 0 || totalExpenses === 0) return null;
+        const percentage = (amount / totalExpenses) * 100;
+        const strokeLength = (percentage / 100) * 238.8;
+        const startAngle = (accumulatedPercent / 100) * 360 - 90;
+        accumulatedPercent += percentage;
+
+        return {
+          category,
+          amount,
+          percentage,
+          strokeLength,
+          startAngle,
+          color: colors[category] || "#94a3b8"
+        };
+      })
+      .filter(Boolean);
+  }, [categoryTotals, totalExpenses]);
+
   const handleSignOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -367,6 +423,11 @@ export default function ExpensesPage() {
             <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
               <CollabIcon />
               <span className="text-sm">Collaboration</span>
+            </Link>
+
+            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+              <SettingsIcon />
+              <span className="text-sm">Settings</span>
             </Link>
           </nav>
         </div>
@@ -450,6 +511,11 @@ export default function ExpensesPage() {
               <Link href="/trip-collab" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
                 <CollabIcon />
                 <span className="text-sm">Collaboration</span>
+              </Link>
+
+              <Link href="/settings" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
+                <SettingsIcon />
+                <span className="text-sm">Settings</span>
               </Link>
             </nav>
           </div>
@@ -560,6 +626,134 @@ export default function ExpensesPage() {
                       <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
                         {formatCurrency(totalExpenses, currency)}
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Visual Budget Progress & Categories Graphic Card */}
+                  <div className="rounded-2xl border border-slate-200/60 bg-white p-5 space-y-5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Budget Progress</p>
+                        <p className="text-sm font-bold text-slate-900 mt-0.5">
+                          {spentPercentage.toFixed(0)}% of your budget used
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                        <p className={`text-xs font-extrabold mt-0.5 ${remainingBudget < 0 ? 'text-rose-600' : spentPercentage > 85 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {remainingBudget < 0 ? 'Over budget!' : spentPercentage > 85 ? 'Running low' : 'On Track'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Track */}
+                    <div className="relative w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ease-out bg-[linear-gradient(90deg,_#38bdf8_0%,_#4f46e5_100%)] ${
+                          remainingBudget < 0 
+                            ? 'from-rose-500 to-red-600' 
+                            : spentPercentage > 85 
+                              ? 'from-amber-500 to-orange-600' 
+                              : 'from-sky-400 to-indigo-600'
+                        }`}
+                        style={{ width: `${Math.min(100, spentPercentage)}%` }}
+                      />
+                    </div>
+
+                    {/* Indicators */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-semibold text-slate-600 pt-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${remainingBudget < 0 ? 'bg-rose-500' : 'bg-indigo-500'}`} />
+                        <span>Spent: {formatCurrency(totalExpenses, currency)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {remainingBudget < 0 ? (
+                          <>
+                            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                            <span className="text-rose-600 font-bold">Overspent by {formatCurrency(Math.abs(remainingBudget), currency)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                            <span className="text-emerald-600 font-bold">Remaining: {formatCurrency(remainingBudget, currency)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Circular Categories Donut Chart & Legend */}
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Category Breakdown</p>
+                      <div className="flex flex-col sm:flex-row items-center gap-6">
+                        {/* Donut Chart (SVG) */}
+                        <div className="relative h-28 w-28 shrink-0 flex items-center justify-center bg-slate-50/50 rounded-full border border-slate-100 shadow-inner">
+                          <svg className="h-full w-full" viewBox="0 0 100 100">
+                            {/* Empty track */}
+                            <circle
+                              cx="50"
+                              cy="50"
+                              r="38"
+                              className="stroke-slate-100"
+                              strokeWidth="8"
+                              fill="transparent"
+                            />
+                            {/* Segmented arcs */}
+                            {donutSegments.map((seg) => (
+                              <circle
+                                key={seg.category}
+                                cx="50"
+                                cy="50"
+                                r="38"
+                                stroke={seg.color}
+                                strokeWidth="8"
+                                fill="transparent"
+                                strokeDasharray={`${seg.strokeLength} 238.8`}
+                                transform={`rotate(${seg.startAngle} 50 50)`}
+                                strokeLinecap="round"
+                                className="transition-all duration-500 ease-out"
+                              />
+                            ))}
+                          </svg>
+                          {/* Total inside center */}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 overflow-hidden">
+                            <span className="text-[11px] font-black text-slate-900 leading-none truncate max-w-[80px]">
+                              {formatCurrency(totalExpenses, currency)}
+                            </span>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                              Total
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Category List and Percentages Grid */}
+                        <div className="flex-1 min-w-0 grid grid-cols-2 gap-3.5 w-full">
+                          {Object.entries(categoryTotals).map(([cat, amt]) => {
+                            const pct = totalExpenses > 0 ? (amt / totalExpenses) * 100 : 0;
+                            const colors = {
+                              Food: "bg-emerald-500",
+                              Stay: "bg-sky-500",
+                              Transport: "bg-indigo-500",
+                              Activities: "bg-amber-500",
+                              Other: "bg-slate-400"
+                            };
+
+                            return (
+                              <div key={cat} className="flex items-start gap-2 min-w-0">
+                                <span className={`h-2.5 w-2.5 rounded-full mt-1 shrink-0 ${colors[cat] || "bg-slate-400"}`} />
+                                <div className="min-w-0">
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase leading-none">{cat}</p>
+                                  <p className="text-xs font-bold text-slate-800 mt-1 truncate">
+                                    {formatCurrency(amt, currency)}
+                                  </p>
+                                  <p className="text-[9px] font-semibold text-slate-400 leading-none mt-0.5">
+                                    {pct.toFixed(0)}%
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
