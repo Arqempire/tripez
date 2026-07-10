@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase/client";
 // Inline SVG Icon components — same set used across the app
 const LogoIcon = () => (
   <svg className="h-6 w-6 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+    <path d="M21.5 12c-2-1.5-4.5-2-6.5-2L10 2H8.5l2 8H5L3.5 8H2.5L4 12l-1.5 4h1L5 14h5.5l-2 8H10l5-8c2 0 4.5-.5 6.5-2z" />
   </svg>
 );
 

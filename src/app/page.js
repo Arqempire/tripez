@@ -32,7 +32,7 @@ const UsersCollabIcon = () => (
 
 const LogoIcon = () => (
   <svg className="h-5 w-5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+    <path d="M21.5 12c-2-1.5-4.5-2-6.5-2L10 2H8.5l2 8H5L3.5 8H2.5L4 12l-1.5 4h1L5 14h5.5l-2 8H10l5-8c2 0 4.5-.5 6.5-2z" />
   </svg>
 );
 
@@ -200,7 +200,7 @@ export default function Home() {
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/register"
-                className="rounded-2xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white font-bold px-8 py-3.5 shadow-lg shadow-sky-100 hover:shadow-xl transition-all duration-300 text-center transform hover:-translate-y-0.5"
+                className="rounded-2xl bg-gradient-to-r from-slate-900 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white font-bold px-8 py-3.5 shadow-lg shadow-sky-100 hover:shadow-xl transition-all duration-300 text-center transform hover:-translate-y-0.5"
               >
                 Start Planning Free
               </Link>
@@ -217,10 +217,10 @@ export default function Home() {
                 ✨ Live AI Itineraries
               </span>
               <span className="flex items-center gap-1.5 bg-white/70 border border-slate-100 rounded-full px-3 py-1.5 shadow-xs">
-                📊 Expense Analytics
+                  Expense Analytics
               </span>
               <span className="flex items-center gap-1.5 bg-white/70 border border-slate-100 rounded-full px-3 py-1.5 shadow-xs">
-                👥 Group Syncing
+                  Group Syncing
               </span>
             </div>
           </div>
@@ -236,7 +236,7 @@ export default function Home() {
                 <span className="h-3 w-3 rounded-full bg-slate-200" />
               </div>
               <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 border border-slate-100 rounded-full px-3 py-1">
-                http://localhost:3000/dashboard
+                http://tripezz.netlify.app/
               </div>
               <span className="w-8" />
             </div>
@@ -251,7 +251,10 @@ export default function Home() {
               {/* Mockup Trip Info Header */}
               <div className="relative flex items-center justify-between text-[11px] text-slate-400 font-bold border-b border-white/5 pb-2.5">
                 <span className="flex items-center gap-1.5 text-slate-200">
-                  <span className="text-sky-400">✈</span> Srinagar, Kashmir
+                  <svg className="h-3.5 w-3.5 text-sky-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.5 12c-2-1.5-4.5-2-6.5-2L10 2H8.5l2 8H5L3.5 8H2.5L4 12l-1.5 4h1L5 14h5.5l-2 8H10l5-8c2 0 4.5-.5 6.5-2z" />
+                  </svg>
+                  Srinagar, Kashmir
                 </span>
                 <span className="bg-slate-800 text-slate-200 px-2 py-0.5 rounded font-semibold text-[9px]">
                   3 Days Draft Plan
@@ -276,10 +279,15 @@ export default function Home() {
             </div>
 
             {/* Floating Widget 1: Expense breakdown */}
-            <div className="absolute -left-6 bottom-12 bg-white/95 border border-slate-200/70 p-4 rounded-2xl shadow-xl w-48 backdrop-blur-md hidden sm:block">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-bold shadow-inner">
-                  ₹
+            <div className="absolute -left-12 -bottom-23 bg-white/95 border border-slate-200/70 p-4 rounded-2xl shadow-xl w-48 backdrop-blur-md hidden sm:block hover:scale-105 hover:shadow-2xl transition-all duration-300">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner shrink-0">
+                  <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 3h12" />
+                    <path d="M6 8h12" />
+                    <path d="m6 13 8.5 8" />
+                    <path d="M6 13h3a4 4 0 0 0 0-8" />
+                  </svg>
                 </div>
                 <div>
                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Expenses</p>
@@ -298,10 +306,15 @@ export default function Home() {
             </div>
 
             {/* Floating Widget 2: Collaborators */}
-            <div className="absolute -right-6 top-20 bg-white/95 border border-slate-200/70 p-4 rounded-2xl shadow-xl w-52 backdrop-blur-md hidden sm:block">
+            <div className="absolute -right-12 -top-10 bg-white/95 border border-slate-200/70 p-4 rounded-2xl shadow-xl w-52 backdrop-blur-md hidden sm:block hover:scale-105 hover:shadow-2xl transition-all duration-300">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center text-sm shadow-inner">
-                  👥
+                <div className="h-8 w-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shadow-inner shrink-0">
+                  <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
                 </div>
                 <div>
                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Collab Status</p>

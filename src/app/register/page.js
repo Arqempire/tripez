@@ -110,7 +110,9 @@ export default function RegisterPage() {
 
           <div className="relative flex items-center gap-2.5 text-lg font-bold tracking-tight text-white mb-8">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-950 shadow-md">
-              ✈
+              <svg className="h-5.5 w-5.5 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 12c-2-1.5-4.5-2-6.5-2L10 2H8.5l2 8H5L3.5 8H2.5L4 12l-1.5 4h1L5 14h5.5l-2 8H10l5-8c2 0 4.5-.5 6.5-2z" />
+              </svg>
             </div>
             <span>TripEZ</span>
           </div>
