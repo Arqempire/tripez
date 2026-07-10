@@ -309,97 +309,32 @@ export default function SettingsPage() {
         </div>
       </aside>
 
-      {/* MOBILE HEADER BAR */}
-      <header className="flex md:hidden items-center justify-between px-6 py-4 bg-white/70 border-b border-slate-200/60 backdrop-blur-md fixed top-0 left-0 right-0 z-40">
-        <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-85 transition-opacity">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-md">
-            <LogoIcon />
-          </div>
-          <span className="text-lg font-bold tracking-tight text-slate-900">TripEZ</span>
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <nav className="fixed bottom-5 left-4 right-4 bg-white/90 backdrop-blur-lg border border-slate-200/60 px-4 py-2.5 rounded-3xl flex items-center justify-around md:hidden z-40 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+          <DashboardIcon />
+          <span>Dashboard</span>
         </Link>
-        
-        <button 
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
-        >
-          <MenuIcon />
-        </button>
-      </header>
-
-      {/* MOBILE DRAWER OVERLAY */}
-      <div className={`fixed inset-0 z-50 transition-all duration-300 md:hidden ${isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
-        <div 
-          className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-        <div className={`absolute top-0 bottom-0 left-0 w-72 bg-white p-6 shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <Link href="/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 hover:opacity-85 transition-opacity">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
-                  <LogoIcon />
-                </div>
-                <span className="text-xl font-bold tracking-tight text-slate-900">TripEZ</span>
-              </Link>
-              <button 
-                onClick={() => setIsSidebarOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-
-            <nav className="space-y-1.5">
-              <Link href="/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-                <DashboardIcon />
-                <span className="text-sm">Dashboard</span>
-              </Link>
-              
-              <Link href="/documents" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-                <DocumentIcon />
-                <span className="text-sm">Document Vault</span>
-              </Link>
-
-              <Link href="/expenses" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-                <ExpenseIcon />
-                <span className="text-sm">Expense Tracker</span>
-              </Link>
-
-              <Link href="/trip-collab" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-                <CollabIcon />
-                <span className="text-sm">Collaboration</span>
-              </Link>
-
-              <Link href="/settings" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
-                <SettingsIcon />
-                <span className="text-sm">Settings</span>
-              </Link>
-            </nav>
-          </div>
-
-          <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
-                {getInitials(userName)}
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
-                <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
-              </div>
-            </div>
-            
-            <button 
-              onClick={handleSignOut}
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-            >
-              <LogoutIcon />
-            </button>
-          </div>
-        </div>
-      </div>
+        <Link href="/documents" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+          <DocumentIcon />
+          <span>Vault</span>
+        </Link>
+        <Link href="/expenses" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+          <ExpenseIcon />
+          <span>Expenses</span>
+        </Link>
+        <Link href="/trip-collab" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+          <CollabIcon />
+          <span>Collab</span>
+        </Link>
+        <Link href="/settings" className="flex flex-col items-center gap-1 text-[10px] font-bold text-sky-600 transition-colors">
+          <SettingsIcon />
+          <span>Settings</span>
+        </Link>
+      </nav>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 md:pl-64 min-h-screen pt-16 md:pt-0">
+      <main className="flex-1 md:pl-64 min-h-screen pt-6 md:pt-0 pb-24 md:pb-8">
         <div className="max-w-3xl mx-auto px-4 py-8 sm:px-8 sm:py-10 space-y-8">
           
           {/* Page Header */}
