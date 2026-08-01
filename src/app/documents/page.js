@@ -596,8 +596,7 @@ export default function DocumentsPage() {
               <section className="space-y-6 w-full">
                 <form onSubmit={handleAddDocument} className="space-y-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xl shadow-sky-100/30 w-full">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">Catalog Document</h2>
-                    <p className="text-xs text-slate-500 mt-1">Specify files and catalog details to secure in the cloud vault.</p>
+                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">Upload Document</h2>
                   </div>
 
                   {/* Title */}
@@ -688,12 +687,12 @@ export default function DocumentsPage() {
                 <div className="space-y-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xl shadow-slate-200/30 flex flex-col justify-between min-h-[300px] w-full">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                      Filing Cabinet
+                      Saved Documents
                       <span className="bg-sky-50 border border-sky-100 text-sky-700 px-2 py-0.5 rounded-full text-xs font-bold shadow-xs">
                         {filteredDocuments.length}
                       </span>
                     </h2>
-                    <p className="text-xs text-slate-500 mt-1">Cataloged travel vouchers and identification papers.</p>
+
                   </div>
 
                   {loading ? (

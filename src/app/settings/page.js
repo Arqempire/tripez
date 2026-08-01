@@ -408,7 +408,7 @@ export default function SettingsPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full rounded-2xl px-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                    placeholder="+91 98765 43210"
+                    placeholder="ex:+91 9797090909"
                   />
                 </div>
               </div>

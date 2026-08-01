@@ -816,7 +816,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-sky-700">{currentDate}</p>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1 tracking-tight">Welcome back, {userName} 👋</h1>
-              <p className="text-sm text-slate-500 mt-1.5 font-medium">Create new trips and coordinate smart AI-guided travel plans.</p>
+
             </div>
           </header>
 

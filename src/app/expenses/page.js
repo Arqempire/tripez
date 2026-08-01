@@ -495,11 +495,7 @@ export default function ExpensesPage() {
               </div>
             </div>
 
-            <div className="bg-white/40 border border-slate-200/50 p-4 sm:p-6 rounded-[2rem] shadow-sm backdrop-blur-md">
-              <p className="text-sm font-semibold text-slate-600 leading-relaxed max-w-3xl">
-                Keep travel purchases cataloged, balance costs against budgets, and convert foreign currency conversions instantly in one workspace.
-              </p>
-            </div>
+            
 
             {/* Primary grid panels */}
             <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
@@ -774,8 +770,8 @@ export default function ExpensesPage() {
                 {/* Currency Converter */}
                 <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-100/50 backdrop-blur-md space-y-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-sky-700">Currency Converter</p>
-                    <h3 className="text-base font-bold text-slate-900 mt-1 tracking-tight">Convert Values Instantly</h3>
+                    <p className="text-[16px] font-bold uppercase tracking-widest text-sky-700">Currency Converter</p>
+
                   </div>
 
                   <div className="space-y-4">
@@ -868,7 +864,7 @@ export default function ExpensesPage() {
                         {expenses.length}
                       </span>
                     </h2>
-                    <p className="text-xs text-slate-500 mt-1">Scrollable history of itemized costs on your adventure board.</p>
+
                   </div>
 
                   {expenses.length === 0 ? (

@@ -1040,7 +1040,7 @@ function PlannerContent() {
                           <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5 5 3Z" />
                           <path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" />
                         </svg>
-                        Generate Itinerary
+                        Generate trip plan
                       </span>
                     )}
                   </button>
