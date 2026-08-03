@@ -32,13 +32,15 @@ export default function LoginPage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session?.user) {
+      if (active && session?.user) {
         router.replace("/dashboard");
       }
     };
 
     redirectIfSignedIn();
-  }, [router]);
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

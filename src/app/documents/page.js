@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
@@ -285,7 +286,8 @@ export default function DocumentsPage() {
     };
 
     loadSession();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const uploadFileToDocument = async (file, documentId) => {
     const isPdf = file.type === "application/pdf";
@@ -832,9 +834,8 @@ export default function DocumentsPage() {
                               }`}>
                                 {/* Image Preview Block */}
                                 {document.fileType?.startsWith("image/") ? (
-                                  /* eslint-disable-next-line @next/next/no-img-element */
                                   <a href={document.fileUrl} target="_blank" rel="noreferrer" className="block relative overflow-hidden rounded-xl border border-slate-100 shadow-inner group">
-                                    <img src={document.fileUrl} alt={document.title} className="h-40 w-full object-cover group-hover:scale-102 transition-transform duration-300" />
+                                    <Image src={document.fileUrl} alt={document.title} width={400} height={160} unoptimized className="h-40 w-full object-cover group-hover:scale-102 transition-transform duration-300" />
                                   </a>
                                 ) : null}
 

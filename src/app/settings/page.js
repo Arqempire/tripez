@@ -160,7 +160,8 @@ export default function SettingsPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaveProfile = async (event) => {
     event.preventDefault();

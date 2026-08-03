@@ -118,7 +118,8 @@ export default function Home() {
       active = false;
       subscription?.unsubscribe?.();
     };
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (checkingSession) {
     return (
@@ -150,30 +151,30 @@ export default function Home() {
       </div>
       
       {/* Sticky Header Navbar */}
-      <header className="sticky top-0 z-40 bg-white/70 border-b border-slate-200/50 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <div className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
+      <header className="sticky top-0 z-40 bg-white/80 border-b border-slate-200/60 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 lg:px-8">
+          <div className="flex items-center gap-2 sm:gap-2.5 text-base sm:text-lg font-bold tracking-tight text-slate-900">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
               <LogoIcon />
             </div>
             <span>TripEZ</span>
           </div>
-          <nav className="flex items-center gap-4 sm:gap-6 text-sm font-semibold text-slate-600">
-            <a href="#features" className="hover:text-sky-700 transition">
+          <nav className="flex items-center gap-2 sm:gap-6 text-xs sm:text-sm font-semibold text-slate-600">
+            <a href="#features" className="hover:text-sky-700 transition hidden sm:inline">
               Features
             </a>
-            <a href="#how-it-works" className="hover:text-sky-700 transition hidden sm:inline">
+            <a href="#how-it-works" className="hover:text-sky-700 transition hidden md:inline">
               How it works
             </a>
             <Link
               href="/login"
-              className="rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 px-4 py-2 text-slate-700 transition"
+              className="rounded-xl border border-slate-300 bg-white hover:bg-slate-100 hover:border-slate-400 px-3.5 sm:px-5 py-2 text-slate-800 font-bold transition shadow-xs whitespace-nowrap"
             >
               Sign In
             </Link>
             <Link
               href="/register"
-              className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 shadow-xs transition"
+              className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-3.5 sm:px-5 py-2 font-bold shadow-xs transition whitespace-nowrap"
             >
               Register
             </Link>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { LOCATION_DATA, ALL_COUNTRIES } from "@/lib/locations";
+import { DESTINATION_PHOTO_MAP, DEFAULT_FALLBACK_PHOTOS, normalizeDestination } from "@/lib/destinations";
 
 // Inline SVG Icon components for premium aesthetics and zero dependency lag
 const LogoIcon = () => (
@@ -163,38 +165,31 @@ const hashStringToIndexes = (str, count, maxIndex) => {
 };
 
 const buildTripGallery = (destination) => {
-  const cleanDest = destination ? destination.split(",").map(s => s.trim()).filter(Boolean).join(", ") : "";
-  const lowerDestination = cleanDest.toLowerCase();
+  if (!destination) return DEFAULT_FALLBACK_PHOTOS;
 
-  if (lowerDestination.includes("gulmarg") || lowerDestination.includes("snow") || lowerDestination.includes("winter")) {
-    return [
-      "https://images.unsplash.com/photo-1517824806704-9040b037703b?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1482192596544-9eb780fc7f66?auto=format&fit=crop&w=1200&q=80",
-    ];
+  const normalized = normalizeDestination(destination);
+  const searchKey = normalized.toLowerCase();
+
+  // 1. Check exact key in curated destination photo map
+  if (DESTINATION_PHOTO_MAP[searchKey] && DESTINATION_PHOTO_MAP[searchKey].length > 0) {
+    return DESTINATION_PHOTO_MAP[searchKey];
   }
 
-  if (lowerDestination.includes("srinagar") || lowerDestination.includes("dal") || lowerDestination.includes("lake")) {
-    return [
-      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=80",
-    ];
+  // 2. Check partial key match in curated map
+  for (const [key, curatedPhotos] of Object.entries(DESTINATION_PHOTO_MAP)) {
+    if ((searchKey.includes(key) || key.includes(searchKey)) && curatedPhotos.length > 0) {
+      return curatedPhotos;
+    }
   }
 
-  const indexes = hashStringToIndexes(lowerDestination, 3, TRAVEL_PHOTOS.length);
-  return indexes.map(idx => TRAVEL_PHOTOS[idx]);
+  // 3. Fallback hash selection
+  const indexes = hashStringToIndexes(searchKey, 3, DEFAULT_FALLBACK_PHOTOS.length);
+  return indexes.map((idx) => DEFAULT_FALLBACK_PHOTOS[idx]);
 };
 
-const buildTripImage = (destination) => buildTripGallery(destination)[0];
-
-const sanitizeImageUrl = (url, destination = "travel", index = 1) => {
-  if (!url) return "";
-  if (url.includes("source.unsplash.com")) {
-    const gallery = buildTripGallery(destination);
-    return gallery[(index - 1) % gallery.length] || gallery[0];
-  }
-  return url;
+const buildTripImage = (destination) => {
+  const gallery = buildTripGallery(destination);
+  return gallery[0] || DEFAULT_FALLBACK_PHOTOS[0];
 };
 
 const formatDateRange = (datesStr) => {
@@ -211,57 +206,7 @@ const formatDateRange = (datesStr) => {
   return datesStr;
 };
 
-const LOCATION_DATA = {
-  "India": {
-    "Jammu & Kashmir": ["Srinagar", "Gulmarg", "Pahalgam", "Sonamarg", "Leh Ladakh"],
-    "Delhi": ["New Delhi", "Old Delhi", "Connaught Place"],
-    "Maharashtra": ["Mumbai", "Pune", "Lonavala", "Mahabaleshwar"],
-    "Karnataka": ["Bengaluru", "Mysuru", "Coorg", "Hampi"]
-  },
-  "Japan": {
-    "Kanto": ["Tokyo", "Yokohama", "Hakone", "Kamakura"],
-    "Kansai": ["Kyoto", "Osaka", "Nara", "Kobe"],
-    "Hokkaido": ["Sapporo", "Otaru", "Hakodate", "Niseko"]
-  },
-  "United States of America": {
-    "New York": ["New York City", "Buffalo", "Rochester", "Ithaca"],
-    "California": ["San Francisco", "Los Angeles", "San Diego", "Yosemite"],
-    "Florida": ["Miami", "Orlando", "Key West", "Tampa"]
-  },
-  "France": {
-    "Île-de-France": ["Paris", "Versailles", "Fontainebleau"],
-    "Provence-Alpes-Côte d'Azur": ["Nice", "Marseille", "Cannes", "Aix-en-Provence"],
-    "Auvergne-Rhône-Alpes": ["Lyon", "Chamonix", "Annecy"]
-  },
-  "United Kingdom": {
-    "England": ["London", "Bath", "Oxford", "Cambridge", "Manchester"],
-    "Scotland": ["Edinburgh", "Glasgow", "Inverness", "Isle of Skye"],
-    "Wales": ["Cardiff", "Snowdonia", "Conwy"]
-  }
-};
 
-const ALL_COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria",
-  "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan",
-  "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia",
-  "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)", "Costa Rica",
-  "Croatia", "Cuba", "Cyprus", "Czechia (Czech Republic)", "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador",
-  "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France",
-  "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau",
-  "Guyana", "Haiti", "Holy See", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq",
-  "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait",
-  "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
-  "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico",
-  "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar (Burma)", "Namibia", "Nauru",
-  "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman",
-  "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
-  "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe",
-  "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
-  "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan",
-  "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States of America", "Uruguay", "Uzbekistan", "Vanuatu", "Venezuela",
-  "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
 
 const parseDestination = (destinationStr) => {
   const result = {
@@ -272,23 +217,23 @@ const parseDestination = (destinationStr) => {
     selectedPlace: "",
     customPlace: ""
   };
-  
+
   if (!destinationStr) return result;
-  
+
   const parts = destinationStr.split(",").map(s => s.trim());
-  
+
   if (parts.length === 3) {
     const place = parts[0];
     const state = parts[1];
     const country = parts[2];
-    
+
     if (ALL_COUNTRIES.includes(country)) {
       result.selectedCountry = country;
     } else if (country) {
       result.selectedCountry = "custom";
       result.customCountry = country;
     }
-    
+
     if (state) {
       const states = LOCATION_DATA[result.selectedCountry];
       if (states && states[state]) {
@@ -298,7 +243,7 @@ const parseDestination = (destinationStr) => {
         result.customState = state;
       }
     }
-    
+
     if (place) {
       const states = LOCATION_DATA[result.selectedCountry];
       if (states && result.selectedState && states[result.selectedState] && states[result.selectedState].includes(place)) {
@@ -308,17 +253,17 @@ const parseDestination = (destinationStr) => {
         result.customPlace = place;
       }
     }
-    
+
     return result;
   }
-  
+
   if (parts.length === 2) {
     const place = parts[0];
     const country = parts[1];
-    
+
     if (ALL_COUNTRIES.includes(country)) {
       result.selectedCountry = country;
-      
+
       const states = LOCATION_DATA[country];
       if (states) {
         if (states[place]) {
@@ -350,7 +295,7 @@ const parseDestination = (destinationStr) => {
       return result;
     }
   }
-  
+
   if (parts.length === 1) {
     const country = parts[0];
     if (ALL_COUNTRIES.includes(country)) {
@@ -358,7 +303,7 @@ const parseDestination = (destinationStr) => {
       return result;
     }
   }
-  
+
   result.selectedCountry = "custom";
   result.customCountry = destinationStr;
   return result;
@@ -389,9 +334,11 @@ export default function DashboardPage() {
   const [activeTripId, setActiveTripId] = useState(null);
   const [savedTrip, setSavedTrip] = useState(null);
   const [message, setMessage] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState("");
-  
+  const [currentDate] = useState(() => {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date().toLocaleDateString("en-US", options);
+  });
+
   const [form, setForm] = useState({
     name: "",
     destination: "",
@@ -399,9 +346,11 @@ export default function DashboardPage() {
     durationDays: "3",
     travelers: "2",
     interests: "",
+    budget: "mid-range",
+    style: "balanced",
     notes: "",
   });
-  
+
   const [selectedCountry, setSelectedCountry] = useState("");
   const [customCountry, setCustomCountry] = useState("");
   const [selectedState, setSelectedState] = useState("");
@@ -409,15 +358,17 @@ export default function DashboardPage() {
   const [selectedPlace, setSelectedPlace] = useState("");
   const [customPlace, setCustomPlace] = useState("");
   const [tripToDelete, setTripToDelete] = useState(null);
+  const [tripCreatedSuccessModal, setTripCreatedSuccessModal] = useState(null);
 
   const getDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
     const country = cSel === "custom" ? cCust : cSel;
     const hasData = country && country !== "custom" && Boolean(LOCATION_DATA[country]);
-    
+
     const state = hasData ? (sSel === "custom" ? sCust : sSel) : (sCust || sSel);
     const place = hasData ? (pSel === "custom" ? pCust : pSel) : (pCust || pSel);
-    
-    return `${place || ""}, ${state || ""}, ${country || ""}`;
+
+    const parts = [place, state, country].map(s => (s || "").trim()).filter(Boolean);
+    return parts.join(", ");
   };
 
   const syncDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
@@ -461,10 +412,7 @@ export default function DashboardPage() {
     syncDestinationString(selectedCountry, customCountry, selectedState, customState, selectedPlace, val);
   };
 
-  useEffect(() => {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    setCurrentDate(new Date().toLocaleDateString("en-US", options));
-  }, []);
+
 
   useEffect(() => {
     let active = true;
@@ -512,7 +460,8 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreateTrip = async (event) => {
     event.preventDefault();
@@ -537,10 +486,6 @@ export default function DashboardPage() {
       setMessage("Please enter traveler count.");
       return;
     }
-    if (!form.interests.trim()) {
-      setMessage("Please list some interests.");
-      return;
-    }
 
     if (!supabase || !userId) {
       setMessage("Please sign in again before saving a trip.");
@@ -548,14 +493,21 @@ export default function DashboardPage() {
     }
 
     const destination = form.destination.trim();
+    if (!destination || destination === ", ,") {
+      setMessage("Please select or enter a valid destination.");
+      return;
+    }
+
     const dates = `${form.durationDays} days starting ${form.startDate}`;
-    const newTrip = {
+    const finalInterests = form.interests.trim() || "Sightseeing, local culture, food & scenic spots";
+
+    const basePayload = {
       user_id: userId,
       name: form.name.trim(),
       destination,
       dates,
       travelers: Number(form.travelers) || 1,
-      interests: form.interests.trim(),
+      interests: finalInterests,
       notes: form.notes.trim(),
       image: buildTripImage(destination),
       gallery: buildTripGallery(destination),
@@ -564,21 +516,50 @@ export default function DashboardPage() {
     setSavingTrip(true);
     setMessage("");
 
-    const { data: savedTrip, error } = await supabase
+    let savedTrip = null;
+    let insertError = null;
+
+    // Try inserting payload with optional budget and style columns
+    const fullPayload = {
+      ...basePayload,
+      budget: form.budget || "mid-range",
+      style: form.style || "balanced",
+    };
+
+    const res1 = await supabase
       .from("trips")
-      .insert(newTrip)
+      .insert(fullPayload)
       .select("id, name, destination, dates, travelers, interests, notes, image, gallery, created_at, itinerary")
       .single();
 
+    if (res1.error) {
+      console.warn("Supabase insert with optional columns failed, retrying base payload:", res1.error.message);
+      // Fallback: retry with standard columns only
+      const res2 = await supabase
+        .from("trips")
+        .insert(basePayload)
+        .select("id, name, destination, dates, travelers, interests, notes, image, gallery, created_at, itinerary")
+        .single();
+
+      savedTrip = res2.data;
+      insertError = res2.error;
+    } else {
+      savedTrip = res1.data;
+    }
+
     setSavingTrip(false);
 
-    if (error) {
-      setMessage("We couldn't save this trip. Please check your Supabase table policies and try again.");
+    if (insertError || !savedTrip) {
+      const errMsg = insertError ? insertError.message : "Unknown database error.";
+      console.error("Failed to save trip to Supabase:", insertError);
+      setMessage(`We couldn't save this trip: ${errMsg}`);
       return;
     }
 
     setTrips((currentTrips) => [savedTrip, ...currentTrips]);
     setSavedTrip(savedTrip);
+    setTripCreatedSuccessModal(savedTrip);
+
     setForm({
       name: "",
       destination: "",
@@ -586,6 +567,8 @@ export default function DashboardPage() {
       durationDays: "3",
       travelers: "2",
       interests: "",
+      budget: "mid-range",
+      style: "balanced",
       notes: "",
     });
     setSelectedCountry("");
@@ -647,7 +630,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased">
-      
+
       {/* SUCCESS OVERLAY MODAL */}
       {savedTrip ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm px-4 animate-fade-in">
@@ -738,7 +721,7 @@ export default function DashboardPage() {
               <DashboardIcon />
               <span className="text-sm">Dashboard</span>
             </Link>
-            
+
             <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
               <DocumentIcon />
               <span className="text-sm">Document Vault</span>
@@ -772,8 +755,8 @@ export default function DashboardPage() {
               <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
             </div>
           </div>
-          
-          <button 
+
+          <button
             onClick={handleSignOut}
             className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
             title="Sign Out"
@@ -810,7 +793,7 @@ export default function DashboardPage() {
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 md:pl-64 min-h-screen pt-6 md:pt-0 pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto px-4 py-8 sm:px-8 sm:py-10 space-y-8">
-          
+
           {/* Greeting Header */}
           <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200/60">
             <div>
@@ -906,7 +889,7 @@ export default function DashboardPage() {
 
           {/* Primary Action Columns */}
           <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
-            
+
             {/* LEFT COLUMN: Create a Trip Form */}
             <section className="space-y-6">
               <div className="bg-white/80 border border-slate-200/70 rounded-3xl p-6 shadow-xl shadow-slate-100/50 backdrop-blur-md space-y-6">
@@ -944,7 +927,7 @@ export default function DashboardPage() {
                   {/* Destination Panel */}
                   <div className="space-y-3">
                     <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Destination</label>
-                    
+
                     <div className="grid gap-3.5 grid-cols-1">
                       {/* Country Select */}
                       <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
@@ -993,7 +976,7 @@ export default function DashboardPage() {
                                 </svg>
                               </span>
                             </div>
-                            
+
                             {selectedState === "custom" && (
                               <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
                                 <span className="absolute left-4 top-3.5 text-slate-400">
@@ -1049,7 +1032,7 @@ export default function DashboardPage() {
                                   </svg>
                                 </span>
                               </div>
-                              
+
                               {selectedPlace === "custom" && (
                                 <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
                                   <span className="absolute left-4 top-3.5 text-slate-400">
@@ -1139,7 +1122,7 @@ export default function DashboardPage() {
 
                   {/* Interests */}
                   <div className="relative">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Interests</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Interests & Vibes <span className="text-slate-400 font-normal lowercase">(optional)</span></label>
                     <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
                       <span className="absolute left-4 top-3.5 text-slate-400">
                         <HeartIcon />
@@ -1148,8 +1131,40 @@ export default function DashboardPage() {
                         value={form.interests}
                         onChange={(event) => setForm({ ...form, interests: event.target.value })}
                         className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                        placeholder="e.g. food, beaches, historic walks"
+                        placeholder="(Optional) e.g. food, beaches, historic walks"
                       />
+                    </div>
+                  </div>
+
+                  {/* Budget & Style */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="relative">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Budget</label>
+                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                        <select
+                          value={form.budget}
+                          onChange={(event) => setForm({ ...form, budget: event.target.value })}
+                          className="w-full px-4 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="budget">Budget</option>
+                          <option value="mid-range">Mid-range</option>
+                          <option value="luxury">Luxury</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Travel Pace</label>
+                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                        <select
+                          value={form.style}
+                          onChange={(event) => setForm({ ...form, style: event.target.value })}
+                          className="w-full px-4 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="relaxed">Relaxed</option>
+                          <option value="balanced">Balanced</option>
+                          <option value="packed">Packed / Fast</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -1217,10 +1232,8 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   {trips.map((trip) => {
                     const isExpanded = activeTripId === trip.id;
-                    const sanitizedImage = sanitizeImageUrl(trip.image, trip.destination, 1);
-                    const gallery = (trip.gallery || [trip.image].filter(Boolean)).map((img, idx) => 
-                      sanitizeImageUrl(img, trip.destination, idx + 1)
-                    );
+                    const coverImage = buildTripImage(trip.destination);
+                    const gallery = buildTripGallery(trip.destination);
                     const travelerCount = String(trip.travelers || "1");
 
                     return (
@@ -1233,41 +1246,38 @@ export default function DashboardPage() {
                           className="cursor-pointer relative overflow-hidden"
                           onClick={() => setActiveTripId(isExpanded ? null : trip.id)}
                         >
-                          {sanitizedImage ? (
-                            <div className="relative h-44 w-full overflow-hidden">
-                              <Image
-                                src={sanitizedImage}
-                                alt={formatDestinationDisplay(trip.destination)}
-                                fill
-                                loading="eager"
-                                sizes="(max-width: 1024px) 100vw, 45vw"
-                                className="object-cover group-hover:scale-103 transition-transform duration-500"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/15 to-transparent" />
-                              
-                              {/* Itinerary Status Overlay */}
-                              <div className="absolute top-4 right-4">
-                                {trip.itinerary ? (
-                                  <span className="backdrop-blur-md bg-emerald-500/90 text-white text-xs px-2.5 py-1 rounded-full font-semibold border border-emerald-400/20 flex items-center gap-1 shadow-sm">
-                                    ✓ Itinerary ready
-                                  </span>
-                                ) : (
-                                  <span className="backdrop-blur-md bg-slate-800/80 text-slate-200 text-xs px-2.5 py-1 rounded-full font-semibold border border-slate-700/20 flex items-center gap-1 shadow-sm">
-                                    ⚡ Draft Plan
-                                  </span>
-                                )}
-                              </div>
+                          <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                            <Image
+                              src={coverImage}
+                              alt={trip.name || trip.destination || "Trip destination"}
+                              fill
+                              sizes="(max-width: 1024px) 100vw, 45vw"
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/15 to-transparent" />
 
-                              {/* Title and Destination Texts */}
-                              <div className="absolute bottom-4 left-4 right-4">
-                                <h3 className="text-lg font-bold text-white tracking-wide">{trip.name}</h3>
-                                <p className="text-xs text-slate-200/95 font-medium mt-0.5 flex items-center gap-1.5 truncate">
-                                  <span className="opacity-70"><MapPinIcon /></span>
-                                  {formatDestinationDisplay(trip.destination)}
-                                </p>
-                              </div>
+                            {/* Itinerary Status Overlay */}
+                            <div className="absolute top-4 right-4">
+                              {trip.itinerary ? (
+                                <span className="backdrop-blur-md bg-emerald-500/90 text-white text-xs px-2.5 py-1 rounded-full font-semibold border border-emerald-400/20 flex items-center gap-1 shadow-sm">
+                                  ✓ Itinerary ready
+                                </span>
+                              ) : (
+                                <span className="backdrop-blur-md bg-slate-800/80 text-slate-200 text-xs px-2.5 py-1 rounded-full font-semibold border border-slate-700/20 flex items-center gap-1 shadow-sm">
+                                  ⚡ Draft Plan
+                                </span>
+                              )}
                             </div>
-                          ) : null}
+
+                            {/* Title and Destination Texts */}
+                            <div className="absolute bottom-4 left-4 right-4">
+                              <h3 className="text-lg font-bold text-white tracking-wide">{trip.name}</h3>
+                              <p className="text-xs text-slate-200/95 font-medium mt-0.5 flex items-center gap-1.5 truncate">
+                                <span className="opacity-70"><MapPinIcon /></span>
+                                {formatDestinationDisplay(trip.destination)}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Content Area */}
@@ -1296,16 +1306,15 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                             <Link
                               href={`/planner?tripId=${encodeURIComponent(trip.id)}`}
-                              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-center rounded-xl text-xs font-bold transition ${
-                                trip.itinerary 
-                                  ? "bg-slate-900 hover:bg-slate-800 text-white shadow-xs" 
+                              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-center rounded-xl text-xs font-bold transition ${trip.itinerary
+                                  ? "bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
                                   : "bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-100"
-                              }`}
+                                }`}
                               onClick={(event) => event.stopPropagation()}
                             >
                               {trip.itinerary ? "Explore Itinerary" : "Plan Trip"}
                             </Link>
-                            
+
                             <button
                               type="button"
                               onClick={(event) => {
@@ -1325,7 +1334,7 @@ export default function DashboardPage() {
                           <div className="border-t border-slate-100 bg-slate-50/30 p-5 space-y-3 animate-fade-in">
                             <div className="flex items-center justify-between">
                               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Destination Highlights</p>
-                              <button 
+                              <button
                                 onClick={() => setActiveTripId(null)}
                                 className="text-[10px] font-bold uppercase tracking-widest text-sky-600 hover:text-sky-700 transition"
                               >
@@ -1360,6 +1369,72 @@ export default function DashboardPage() {
         </div>
       </main>
 
+      {/* Trip Created Success Confirmation Dialog Modal */}
+      {tripCreatedSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-[2.5rem] border border-emerald-100 bg-white/95 p-8 shadow-2xl backdrop-blur-md text-center space-y-6 animate-scale-up">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-md shadow-emerald-100/50">
+              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                Trip Created Successfully!
+              </span>
+              <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight pt-1">
+                {tripCreatedSuccessModal.name}
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold flex items-center justify-center gap-1">
+                <MapPinIcon /> {formatDestinationDisplay(tripCreatedSuccessModal.destination)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-xs font-semibold text-slate-600 text-left space-y-2">
+              <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                <span className="text-slate-400">Timeline:</span>
+                <span className="text-slate-800 font-bold">{formatDateRange(tripCreatedSuccessModal.dates)}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                <span className="text-slate-400">Travelers:</span>
+                <span className="text-slate-800 font-bold">{tripCreatedSuccessModal.travelers} traveler(s)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Interests:</span>
+                <span className="text-slate-800 font-bold truncate max-w-[200px]" title={tripCreatedSuccessModal.interests}>
+                  {tripCreatedSuccessModal.interests}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const id = tripCreatedSuccessModal.id;
+                  setTripCreatedSuccessModal(null);
+                  router.push(`/planner?tripId=${encodeURIComponent(id)}&autoGenerate=true`);
+                }}
+                className="w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition-all duration-200 transform hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Launch AI Planner Now</span>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTripCreatedSuccessModal(null)}
+                className="w-full rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 py-3 text-xs font-bold text-slate-700 transition cursor-pointer"
+              >
+                View Saved Trips
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

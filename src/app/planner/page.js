@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { LOCATION_DATA, ALL_COUNTRIES } from "@/lib/locations";
+import { DESTINATION_PHOTO_MAP, DEFAULT_FALLBACK_PHOTOS, normalizeDestination } from "@/lib/destinations";
 
 const TRAVEL_PHOTOS = [
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", // Beach
@@ -35,57 +37,30 @@ const hashStringToIndexes = (str, count, maxIndex) => {
   return indexes;
 };
 
-const buildTripGallery = (destination = "") => {
-  const cleanDest = destination ? destination.split(",").map(s => s.trim()).filter(Boolean).join(", ") : "";
-  const lowerDestination = cleanDest.toLowerCase();
+const buildTripGallery = (destination) => {
+  if (!destination) return DEFAULT_FALLBACK_PHOTOS;
 
-  if (lowerDestination.includes("gulmarg") || lowerDestination.includes("snow") || lowerDestination.includes("winter")) {
-    return [
-      "https://images.unsplash.com/photo-1517824806704-9040b037703b?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1482192596544-9eb780fc7f66?auto=format&fit=crop&w=1200&q=80",
-    ];
+  const normalized = normalizeDestination(destination);
+  const searchKey = normalized.toLowerCase();
+
+  // 1. Check exact key in curated destination photo map
+  if (DESTINATION_PHOTO_MAP[searchKey] && DESTINATION_PHOTO_MAP[searchKey].length > 0) {
+    return DESTINATION_PHOTO_MAP[searchKey];
   }
 
-  if (lowerDestination.includes("srinagar") || lowerDestination.includes("dal") || lowerDestination.includes("lake")) {
-    return [
-      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=80",
-    ];
+  // 2. Check partial key match in curated map
+  for (const [key, curatedPhotos] of Object.entries(DESTINATION_PHOTO_MAP)) {
+    if ((searchKey.includes(key) || key.includes(searchKey)) && curatedPhotos.length > 0) {
+      return curatedPhotos;
+    }
   }
 
-  const indexes = hashStringToIndexes(lowerDestination, 4, TRAVEL_PHOTOS.length);
-  return indexes.map(idx => TRAVEL_PHOTOS[idx]);
+  // 3. Fallback hash selection
+  const indexes = hashStringToIndexes(searchKey, 3, DEFAULT_FALLBACK_PHOTOS.length);
+  return indexes.map((idx) => DEFAULT_FALLBACK_PHOTOS[idx]);
 };
 
-// Location options data structure for drop-downs
-const LOCATION_DATA = {
-  "India": {
-    "Jammu & Kashmir": ["Gulmarg", "Srinagar", "Pahalgam", "Sonamarg"],
-    "Kerala": ["Munnar", "Alleppey", "Kochi", "Wayanad"],
-    "Rajasthan": ["Jaipur", "Udaipur", "Jodhpur", "Jaisalmer"],
-    "Goa": ["North Goa Beaches", "South Goa Beaches", "Panaji"],
-    "Himachal Pradesh": ["Manali", "Shimla", "Dharamshala", "Spiti Valley"]
-  },
-  "France": {
-    "Île-de-France": ["Paris", "Versailles"],
-    "Provence-Alpes-Côte d'Azur": ["Nice", "Marseille", "Cannes", "Aix-en-Provence"],
-    "Auvergne-Rhône-Alpes": ["Chamonix", "Lyon"]
-  },
-  "Japan": {
-    "Kanto": ["Tokyo", "Hakone", "Yokohama"],
-    "Kansai": ["Kyoto", "Osaka", "Nara", "Kobe"],
-    "Hokkaido": ["Sapporo", "Otaru", "Niseko"]
-  },
-  "United States of America": {
-    "California": ["San Francisco", "Los Angeles", "Yosemite National Park", "San Diego"],
-    "New York": ["New York City", "Upstate NY", "Niagara Falls"],
-    "Hawaii": ["Honolulu (Oahu)", "Maui", "Kauai"]
-  }
-};
 
-const ALL_COUNTRIES = Object.keys(LOCATION_DATA);
 
 const parseDestination = (destinationStr) => {
   const result = {
@@ -96,23 +71,23 @@ const parseDestination = (destinationStr) => {
     selectedPlace: "",
     customPlace: ""
   };
-  
+
   if (!destinationStr) return result;
-  
+
   const parts = destinationStr.split(",").map(s => s.trim());
-  
+
   if (parts.length === 3) {
     const place = parts[0];
     const state = parts[1];
     const country = parts[2];
-    
+
     if (ALL_COUNTRIES.includes(country)) {
       result.selectedCountry = country;
     } else if (country) {
       result.selectedCountry = "custom";
       result.customCountry = country;
     }
-    
+
     if (state) {
       const states = LOCATION_DATA[result.selectedCountry];
       if (states && states[state]) {
@@ -122,7 +97,7 @@ const parseDestination = (destinationStr) => {
         result.customState = state;
       }
     }
-    
+
     if (place) {
       const states = LOCATION_DATA[result.selectedCountry];
       if (states && result.selectedState && states[result.selectedState] && states[result.selectedState].includes(place)) {
@@ -132,17 +107,17 @@ const parseDestination = (destinationStr) => {
         result.customPlace = place;
       }
     }
-    
+
     return result;
   }
-  
+
   if (parts.length === 2) {
     const place = parts[0];
     const country = parts[1];
-    
+
     if (ALL_COUNTRIES.includes(country)) {
       result.selectedCountry = country;
-      
+
       const states = LOCATION_DATA[country];
       if (states) {
         if (states[place]) {
@@ -174,7 +149,7 @@ const parseDestination = (destinationStr) => {
       return result;
     }
   }
-  
+
   if (parts.length === 1) {
     const country = parts[0];
     if (ALL_COUNTRIES.includes(country)) {
@@ -182,7 +157,7 @@ const parseDestination = (destinationStr) => {
       return result;
     }
   }
-  
+
   result.selectedCountry = "custom";
   result.customCountry = destinationStr;
   return result;
@@ -285,12 +260,13 @@ function PlannerContent() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   const [plannerDestination, setPlannerDestination] = useState("");
   const [itinerary, setItinerary] = useState(null);
   const [savedItinerary, setSavedItinerary] = useState(null);
   const [message, setMessage] = useState("");
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [webPhotos, setWebPhotos] = useState([]);
 
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("");
@@ -299,6 +275,7 @@ function PlannerContent() {
   const [form, setForm] = useState({
     name: "",
     destination: "",
+    startDate: "",
     days: "3",
     travelers: "2",
     interests: "",
@@ -340,7 +317,10 @@ function PlannerContent() {
         parts.push(selectedCountry);
       }
     }
-    setForm(f => ({ ...f, destination: parts.join(", ") }));
+    const destinationStr = parts.join(", ");
+    requestAnimationFrame(() => {
+      setForm((f) => ({ ...f, destination: destinationStr }));
+    });
   }, [selectedCountry, customCountry, selectedState, customState, selectedPlace, customPlace]);
 
   useEffect(() => {
@@ -360,33 +340,55 @@ function PlannerContent() {
       setUserName(session.user?.user_metadata?.full_name || session.user?.email || "your account");
 
       if (tripId) {
-        const { data: trip, error } = await supabase
+        let trip = null;
+        let fetchError = null;
+
+        const res1 = await supabase
           .from("trips")
-          .select("name, destination, dates, travelers, interests, notes, itinerary")
+          .select("id, name, destination, dates, travelers, interests, notes, budget, style, itinerary")
           .eq("id", tripId)
           .single();
 
-        if (error) {
-          setMessage("We couldn't load this trip details.");
-        } else if (trip) {
-          setPlannerDestination(trip.destination);
-          
+        if (res1.error) {
+          const res2 = await supabase
+            .from("trips")
+            .select("id, name, destination, dates, travelers, interests, notes, itinerary")
+            .eq("id", tripId)
+            .single();
+
+          trip = res2.data;
+          fetchError = res2.error;
+        } else {
+          trip = res1.data;
+        }
+
+        if (fetchError || !trip) {
+          console.error("Error fetching trip details:", fetchError);
+          setMessage("We couldn't load this trip's details from the database.");
+        } else {
+          setPlannerDestination(trip.destination || "");
+
           let parsedDuration = "3";
+          let parsedStartDate = "";
           if (trip.dates) {
-            const match = trip.dates.match(/(\d+)\s+days/);
-            if (match) parsedDuration = match[1];
+            const matchDays = trip.dates.match(/(\d+)\s+days/);
+            if (matchDays) parsedDuration = matchDays[1];
+            const matchDate = trip.dates.match(/starting\s+([\d-]+)/);
+            if (matchDate) parsedStartDate = matchDate[1];
           }
 
-          setForm({
+          const loadedForm = {
             name: trip.name || "",
             destination: trip.destination || "",
+            startDate: parsedStartDate,
             days: parsedDuration,
             travelers: String(trip.travelers || "2"),
             interests: trip.interests || "",
-            budget: "mid-range",
-            style: "balanced",
+            budget: trip.budget || "mid-range",
+            style: trip.style || "balanced",
             notes: trip.notes || ""
-          });
+          };
+          setForm(loadedForm);
 
           // Sync destination dropdown selections
           const destState = parseDestination(trip.destination);
@@ -415,7 +417,24 @@ function PlannerContent() {
     };
 
     loadTripData();
-  }, [tripId, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId]);
+
+  const getDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
+    const country = cSel === "custom" ? cCust : cSel;
+    const hasData = country && country !== "custom" && Boolean(LOCATION_DATA[country]);
+
+    const state = hasData ? (sSel === "custom" ? sCust : sSel) : (sCust || sSel);
+    const place = hasData ? (pSel === "custom" ? pCust : pSel) : (pCust || pSel);
+
+    const parts = [place, state, country].map(s => (s || "").trim()).filter(Boolean);
+    return parts.join(", ");
+  };
+
+  const syncDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
+    const str = getDestinationString(cSel, cCust, sSel, sCust, pSel, pCust);
+    setForm((current) => ({ ...current, destination: str }));
+  };
 
   const handleCountrySelect = (val) => {
     setSelectedCountry(val);
@@ -424,6 +443,7 @@ function PlannerContent() {
     setSelectedPlace("");
     setCustomPlace("");
     setCustomCountry("");
+    syncDestinationString(val, "", "", "", "", "");
   };
 
   const handleStateSelect = (val) => {
@@ -431,23 +451,28 @@ function PlannerContent() {
     setSelectedPlace("");
     setCustomPlace("");
     setCustomState("");
+    syncDestinationString(selectedCountry, customCountry, val, "", "", "");
   };
 
   const handlePlaceSelect = (val) => {
     setSelectedPlace(val);
     setCustomPlace("");
+    syncDestinationString(selectedCountry, customCountry, selectedState, customState, val, "");
   };
 
   const handleCustomCountryChange = (val) => {
     setCustomCountry(val);
+    syncDestinationString(selectedCountry, val, selectedState, customState, selectedPlace, customPlace);
   };
 
   const handleCustomStateChange = (val) => {
     setCustomState(val);
+    syncDestinationString(selectedCountry, customCountry, selectedState, val, selectedPlace, customPlace);
   };
 
   const handleCustomPlaceChange = (val) => {
     setCustomPlace(val);
+    syncDestinationString(selectedCountry, customCountry, selectedState, customState, selectedPlace, val);
   };
 
   const handleGenerateItinerary = async (event) => {
@@ -465,19 +490,16 @@ function PlannerContent() {
       setMessage("Please specify travelers.");
       return;
     }
-    if (!form.interests.trim()) {
-      setMessage("Please describe some interests.");
-      return;
-    }
-
     setGenerating(true);
     setMessage("");
+
+    const finalInterests = form.interests.trim() || "Sightseeing, local culture, food & scenic spots";
 
     try {
       const res = await fetch("/api/itinerary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, id: tripId }),
+        body: JSON.stringify({ ...form, interests: finalInterests, id: tripId }),
       });
 
       if (!res.ok) {
@@ -544,7 +566,7 @@ function PlannerContent() {
       const match = line.match(/^\*\*(.*?)\*\*:(.*)$/) || line.match(/^\*\*(.*?)\*\*(.*)$/);
       const timeStr = match ? match[1].trim() : "";
       const contentStr = match ? match[2].trim() : line;
-      
+
       const event = { time: timeStr, content: contentStr };
 
       if (lowerLine.includes("morning") || lowerLine.includes("breakfast") || /^(0?[5-9]|10|11):/i.test(timeStr) || /^[5-9]am|[10-11]am/i.test(timeStr)) {
@@ -578,7 +600,37 @@ function PlannerContent() {
     router.replace("/");
   };
 
-  const gallery = useMemo(() => buildTripGallery(plannerDestination), [plannerDestination]);
+  useEffect(() => {
+    const targetDest = plannerDestination || form.destination;
+    if (!targetDest?.trim()) return;
+
+    let active = true;
+    const fetchWebPhotos = async () => {
+      try {
+        const res = await fetch(`/api/photos?query=${encodeURIComponent(targetDest)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (active && data.photos?.length > 0) {
+            setWebPhotos(data.photos);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching destination web photos:", err);
+      }
+    };
+
+    fetchWebPhotos();
+    return () => {
+      active = false;
+    };
+  }, [plannerDestination, form.destination]);
+
+  const gallery = useMemo(() => {
+    if (webPhotos && webPhotos.length > 0) {
+      return webPhotos;
+    }
+    return buildTripGallery(plannerDestination || form.destination);
+  }, [webPhotos, plannerDestination, form.destination]);
 
   const summary = useMemo(() => {
     if (!itinerary) return null;
@@ -602,8 +654,8 @@ function PlannerContent() {
   const activeDay = summary?.days?.[activeDayIndex];
 
   const activeDaySections = useMemo(() => {
-    return activeDay 
-      ? parsePlanByTimeOfDay(activeDay.plan) 
+    return activeDay
+      ? parsePlanByTimeOfDay(activeDay.plan)
       : { morning: [], afternoon: [], evening: [] };
   }, [activeDay]);
 
@@ -637,7 +689,7 @@ function PlannerContent() {
 
   return (
     <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased overflow-x-hidden w-full">
-      
+
       {/* DESKTOP SIDEBAR NAVIGATION */}
       <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
         <div className="space-y-8">
@@ -653,7 +705,7 @@ function PlannerContent() {
               <DashboardIcon />
               <span className="text-sm">Dashboard</span>
             </Link>
-            
+
             <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
               <DocumentIcon />
               <span className="text-sm">Document Vault</span>
@@ -687,7 +739,7 @@ function PlannerContent() {
               <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleSignOut}
             className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
             title="Sign Out"
@@ -725,7 +777,7 @@ function PlannerContent() {
       <main className="flex-1 md:pl-64 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen">
         <div className="px-4 py-8 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-6xl w-full space-y-8">
-            
+
             {/* Header Block */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-200/60">
               <div className="flex items-center gap-3">
@@ -747,7 +799,7 @@ function PlannerContent() {
 
             {/* Primary split layout grid */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-8 w-full">
-              
+
               {/* Trip Parameters Setup Form */}
               <section className="space-y-6 w-full">
                 <form onSubmit={handleGenerateItinerary} className="space-y-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xl shadow-sky-100/40 w-full">
@@ -759,7 +811,7 @@ function PlannerContent() {
                   {/* Destination selector */}
                   <div className="space-y-3">
                     <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Destination</label>
-                    
+
                     <div className="grid gap-3.5 grid-cols-1">
                       {/* Country Selection */}
                       <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
@@ -812,7 +864,7 @@ function PlannerContent() {
                                 </svg>
                               </span>
                             </div>
-                            
+
                             {selectedState === "custom" && (
                               <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
                                 <span className="absolute left-4 top-3.5 text-slate-400">
@@ -874,7 +926,7 @@ function PlannerContent() {
                                   </svg>
                                 </span>
                               </div>
-                              
+
                               {selectedPlace === "custom" && (
                                 <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
                                   <span className="absolute left-4 top-3.5 text-slate-400">
@@ -913,8 +965,24 @@ function PlannerContent() {
                     </div>
                   </div>
 
-                  {/* Timeline days and travellers info */}
-                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                  {/* Timeline start date, days and travellers info */}
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                    <div className="relative">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Start Date</label>
+                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                        <span className="absolute left-4 top-3.5 text-slate-400">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </span>
+                        <input
+                          type="date"
+                          value={form.startDate || ""}
+                          onChange={(event) => setForm({ ...form, startDate: event.target.value })}
+                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                        />
+                      </div>
+                    </div>
                     <div className="relative">
                       <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Duration (Days)</label>
                       <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
@@ -956,7 +1024,7 @@ function PlannerContent() {
 
                   {/* Interests prompt */}
                   <div className="relative">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Interests & Vibes</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Interests & Vibes <span className="text-slate-400 font-normal lowercase">(optional)</span></label>
                     <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
                       <span className="absolute left-4 top-3.5 text-slate-400">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -967,7 +1035,7 @@ function PlannerContent() {
                         value={form.interests}
                         onChange={(event) => setForm({ ...form, interests: event.target.value })}
                         className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                        placeholder="e.g. food, museums, nightlife"
+                        placeholder="(Optional) e.g. food, museums, nightlife"
                       />
                     </div>
                   </div>
@@ -1063,7 +1131,7 @@ function PlannerContent() {
                           className="object-cover opacity-75"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-                        
+
                         <div className="absolute inset-0 flex flex-col justify-end p-6 text-white w-full">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300">Generated Itinerary</span>
                           <h2 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight leading-none text-white">{summary.title}</h2>
@@ -1082,15 +1150,14 @@ function PlannerContent() {
 
                       {/* Body area */}
                       <div className="space-y-6 p-5 sm:p-6 flex-1 flex flex-col w-full">
-                        
+
                         {/* Action Bar */}
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-100 bg-slate-50/50 p-4 shadow-inner">
                           <div className="flex items-center gap-2">
-                            <span className={`flex h-2 w-2 rounded-full ${
-                              savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
+                            <span className={`flex h-2 w-2 rounded-full ${savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
                                 ? "bg-emerald-500"
                                 : "bg-amber-500 animate-pulse"
-                            }`}></span>
+                              }`}></span>
                             <p className="text-xs font-semibold text-slate-500">
                               {savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
                                 ? "Itinerary is fully synced."
@@ -1103,11 +1170,10 @@ function PlannerContent() {
                                 type="button"
                                 onClick={handleSaveItinerary}
                                 disabled={saving || (savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary))}
-                                className={`w-full sm:w-auto rounded-full px-5 py-2.5 text-xs font-bold text-white transition shadow-md flex items-center justify-center cursor-pointer ${
-                                  savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
+                                className={`w-full sm:w-auto rounded-full px-5 py-2.5 text-xs font-bold text-white transition shadow-md flex items-center justify-center cursor-pointer ${savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
                                     ? "bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600 disabled:text-white disabled:shadow-none disabled:cursor-default"
                                     : "bg-sky-600 hover:bg-sky-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed shadow-sky-100 disabled:shadow-none"
-                                }`}
+                                  }`}
                               >
                                 {saving ? "Saving..." : savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary) ? "Saved ✓" : "Save Itinerary"}
                               </button>
@@ -1136,11 +1202,10 @@ function PlannerContent() {
                                 key={`${day.day}-${index}`}
                                 type="button"
                                 onClick={() => setActiveDayIndex(index)}
-                                className={`min-w-28 rounded-2xl border px-4 py-3 text-left transition shrink-0 cursor-pointer ${
-                                  isActive
+                                className={`min-w-28 rounded-2xl border px-4 py-3 text-left transition shrink-0 cursor-pointer ${isActive
                                     ? "border-sky-500 bg-sky-600 text-white shadow-lg shadow-sky-100"
                                     : "border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-350 hover:bg-sky-50/70"
-                                }`}
+                                  }`}
                               >
                                 <span className={`text-[10px] font-bold uppercase tracking-wider block ${isActive ? "text-sky-100" : "text-slate-400"}`}>
                                   Day {day.day}
@@ -1175,7 +1240,7 @@ function PlannerContent() {
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-sky-700">Daily Route</p>
                                 <h3 className="mt-1 text-xl font-bold text-slate-900 leading-tight">{activeDay.title}</h3>
                               </div>
-                              
+
                               {activeDayHighlights.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 pt-0.5">
                                   {activeDayHighlights.map((high, idx) => (
@@ -1185,9 +1250,9 @@ function PlannerContent() {
                                   ))}
                                 </div>
                               )}
-                              
+
                               <div className="space-y-6 mt-4 border-t border-slate-100 pt-4">
-                                
+
                                 {/* 1. MORNING SECTION */}
                                 {activeDaySections.morning.length > 0 && (
                                   <div className="space-y-3">
@@ -1197,7 +1262,7 @@ function PlannerContent() {
                                       </svg>
                                       <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Morning (08:00 AM - 12:00 PM)</h4>
                                     </div>
-                                    
+
                                     <div className="relative pl-1">
                                       {/* Vertical track line for this slot */}
                                       <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-sky-200/80 rounded-full" />
@@ -1206,19 +1271,16 @@ function PlannerContent() {
                                           const isMeal = item.content.toLowerCase().includes("breakfast");
                                           return (
                                             <div key={idx} className="relative pl-8 group">
-                                              <div className={`absolute left-1.5 top-4.5 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center shadow-2xs z-10 transition-all duration-300 group-hover:scale-115 ${
-                                                isMeal ? "border-emerald-500 ring-2 ring-emerald-50" : "border-sky-500 ring-2 ring-sky-50"
-                                              }`}>
+                                              <div className={`absolute left-1.5 top-4.5 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center shadow-2xs z-10 transition-all duration-300 group-hover:scale-115 ${isMeal ? "border-emerald-500 ring-2 ring-emerald-50" : "border-sky-500 ring-2 ring-sky-50"
+                                                }`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${isMeal ? "bg-emerald-500" : "bg-sky-500"}`} />
                                               </div>
-                                              
-                                              <div className={`p-3.5 rounded-xl border transition-all duration-300 hover:shadow-sm hover:translate-x-0.5 ${
-                                                isMeal ? "border-emerald-100 bg-emerald-50/15 hover:bg-emerald-50/30" : "border-slate-100 bg-slate-50/40 hover:bg-white"
-                                              }`}>
+
+                                              <div className={`p-3.5 rounded-xl border transition-all duration-300 hover:shadow-sm hover:translate-x-0.5 ${isMeal ? "border-emerald-100 bg-emerald-50/15 hover:bg-emerald-50/30" : "border-slate-100 bg-slate-50/40 hover:bg-white"
+                                                }`}>
                                                 {item.time && (
-                                                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider mb-2 border ${
-                                                    isMeal ? "bg-emerald-50 text-emerald-700 border-emerald-100/50" : "bg-sky-50 text-sky-700 border-sky-100/50"
-                                                  }`}>
+                                                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider mb-2 border ${isMeal ? "bg-emerald-50 text-emerald-700 border-emerald-100/50" : "bg-sky-50 text-sky-700 border-sky-100/50"
+                                                    }`}>
                                                     {item.time}
                                                   </span>
                                                 )}
@@ -1241,7 +1303,7 @@ function PlannerContent() {
                                       </svg>
                                       <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Afternoon (12:00 PM - 05:00 PM)</h4>
                                     </div>
-                                    
+
                                     <div className="relative pl-1">
                                       <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-amber-200/80 rounded-full" />
                                       <div className="space-y-4">
@@ -1249,19 +1311,16 @@ function PlannerContent() {
                                           const isMeal = item.content.toLowerCase().includes("lunch");
                                           return (
                                             <div key={idx} className="relative pl-8 group">
-                                              <div className={`absolute left-1.5 top-4.5 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center shadow-2xs z-10 transition-all duration-300 group-hover:scale-115 ${
-                                                isMeal ? "border-emerald-500 ring-2 ring-emerald-50" : "border-amber-500 ring-2 ring-amber-50"
-                                              }`}>
+                                              <div className={`absolute left-1.5 top-4.5 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center shadow-2xs z-10 transition-all duration-300 group-hover:scale-115 ${isMeal ? "border-emerald-500 ring-2 ring-emerald-50" : "border-amber-500 ring-2 ring-amber-50"
+                                                }`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${isMeal ? "bg-emerald-500" : "bg-amber-500"}`} />
                                               </div>
-                                              
-                                              <div className={`p-3.5 rounded-xl border transition-all duration-300 hover:shadow-sm hover:translate-x-0.5 ${
-                                                isMeal ? "border-emerald-100 bg-emerald-50/15 hover:bg-emerald-50/30" : "border-slate-100 bg-slate-50/40 hover:bg-white"
-                                              }`}>
+
+                                              <div className={`p-3.5 rounded-xl border transition-all duration-300 hover:shadow-sm hover:translate-x-0.5 ${isMeal ? "border-emerald-100 bg-emerald-50/15 hover:bg-emerald-50/30" : "border-slate-100 bg-slate-50/40 hover:bg-white"
+                                                }`}>
                                                 {item.time && (
-                                                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider mb-2 border ${
-                                                    isMeal ? "bg-emerald-50 text-emerald-700 border-emerald-100/50" : "bg-amber-50 text-amber-700 border-amber-100/50"
-                                                  }`}>
+                                                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider mb-2 border ${isMeal ? "bg-emerald-50 text-emerald-700 border-emerald-100/50" : "bg-amber-50 text-amber-700 border-amber-100/50"
+                                                    }`}>
                                                     {item.time}
                                                   </span>
                                                 )}
@@ -1284,7 +1343,7 @@ function PlannerContent() {
                                       </svg>
                                       <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Evening & Dinner (05:00 PM - 10:00 PM)</h4>
                                     </div>
-                                    
+
                                     <div className="relative pl-1">
                                       <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-indigo-200/80 rounded-full" />
                                       <div className="space-y-4">
@@ -1292,19 +1351,16 @@ function PlannerContent() {
                                           const isMeal = item.content.toLowerCase().includes("dinner");
                                           return (
                                             <div key={idx} className="relative pl-8 group">
-                                              <div className={`absolute left-1.5 top-4.5 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center shadow-2xs z-10 transition-all duration-300 group-hover:scale-115 ${
-                                                isMeal ? "border-emerald-500 ring-2 ring-emerald-50" : "border-indigo-500 ring-2 ring-indigo-50"
-                                              }`}>
+                                              <div className={`absolute left-1.5 top-4.5 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center shadow-2xs z-10 transition-all duration-300 group-hover:scale-115 ${isMeal ? "border-emerald-500 ring-2 ring-emerald-50" : "border-indigo-500 ring-2 ring-indigo-50"
+                                                }`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${isMeal ? "bg-emerald-500" : "bg-indigo-500"}`} />
                                               </div>
-                                              
-                                              <div className={`p-3.5 rounded-xl border transition-all duration-300 hover:shadow-sm hover:translate-x-0.5 ${
-                                                isMeal ? "border-emerald-100 bg-emerald-50/15 hover:bg-emerald-50/30" : "border-slate-100 bg-slate-50/40 hover:bg-white"
-                                              }`}>
+
+                                              <div className={`p-3.5 rounded-xl border transition-all duration-300 hover:shadow-sm hover:translate-x-0.5 ${isMeal ? "border-emerald-100 bg-emerald-50/15 hover:bg-emerald-50/30" : "border-slate-100 bg-slate-50/40 hover:bg-white"
+                                                }`}>
                                                 {item.time && (
-                                                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider mb-2 border ${
-                                                    isMeal ? "bg-emerald-50 text-emerald-700 border-emerald-100/50" : "bg-indigo-50 text-indigo-700 border-indigo-100/50"
-                                                  }`}>
+                                                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider mb-2 border ${isMeal ? "bg-emerald-50 text-emerald-700 border-emerald-100/50" : "bg-indigo-50 text-indigo-700 border-indigo-100/50"
+                                                    }`}>
                                                     {item.time}
                                                   </span>
                                                 )}
@@ -1333,15 +1389,15 @@ function PlannerContent() {
                                 <span className="text-[10px] font-semibold text-slate-400">showing active day highlights</span>
                               </div>
                               <div className="flex-1 w-full h-full bg-slate-50 relative">
-                                <iframe 
-                                  width="100%" 
-                                  height="100%" 
-                                  style={{ border: 0 }} 
-                                  loading="lazy" 
-                                  allowFullScreen 
+                                <iframe
+                                  width="100%"
+                                  height="100%"
+                                  style={{ border: 0 }}
+                                  loading="lazy"
+                                  allowFullScreen
                                   src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                                    activeDayHighlights.length > 0 
-                                      ? `${activeDayHighlights[0]}, ${plannerDestination}` 
+                                    activeDayHighlights.length > 0
+                                      ? `${activeDayHighlights[0]}, ${plannerDestination}`
                                       : plannerDestination
                                   )}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
                                 />

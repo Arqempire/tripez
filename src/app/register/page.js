@@ -27,7 +27,9 @@ export default function RegisterPage() {
     };
 
     redirectIfSignedIn();
-  }, [router]);
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -86,7 +88,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen relative text-slate-900 font-sans antialiased overflow-x-hidden flex items-center justify-center px-4 py-16">
-      
+
       {/* Immersive Travel Destination Background */}
       <div className="absolute inset-0 -z-20 w-full h-full">
         <Image
@@ -101,7 +103,7 @@ export default function RegisterPage() {
       </div>
 
       <div className="w-full max-w-4xl flex flex-col overflow-hidden rounded-[2.5rem] border border-slate-200/80 bg-white/80 shadow-2xl backdrop-blur-md lg:flex-row relative animate-scale-up">
-        
+
         {/* Left Welcome Panel */}
         <div className="flex-1 bg-slate-950 p-8 text-white lg:p-12 relative overflow-hidden flex flex-col justify-between min-h-[320px]">
           {/* Background glows inside panel */}

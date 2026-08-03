@@ -217,7 +217,8 @@ export default function TripCollabPage() {
     };
 
     loadSession();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!loading && userId && selectedTripId) {
@@ -806,7 +807,7 @@ export default function TripCollabPage() {
             </div>
             <h3 className="text-lg font-bold text-slate-900">Remove Companion</h3>
             <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-              Are you sure you want to delete traveler <strong className="text-slate-755">"{travellerToDelete.name}"</strong>? All associated shared expenses logged under their name will also be erased permanently.
+              Are you sure you want to delete traveler <strong className="text-slate-755">&quot;{travellerToDelete.name}&quot;</strong>? All associated shared expenses logged under their name will also be erased permanently.
             </p>
             <div className="flex gap-3 pt-3.5">
               <button
