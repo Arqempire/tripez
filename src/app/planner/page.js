@@ -17,7 +17,7 @@ const TRAVEL_PHOTOS = [
   "https://images.unsplash.com/photo-1517824806704-9040b037703b?auto=format&fit=crop&w=1200&q=80", // Snow / Gulmarg
   "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80", // Travel lake boat
   "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=1200&q=80", // Tropical beach
-  "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80", // Map travel passport
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80", // Mountain valley landscape
   "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1200&q=80", // Forest/Autumn roads
   "https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&w=1200&q=80", // European architecture
   "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?auto=format&fit=crop&w=1200&q=80", // Travel adventure
@@ -1155,8 +1155,8 @@ function PlannerContent() {
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-100 bg-slate-50/50 p-4 shadow-inner">
                           <div className="flex items-center gap-2">
                             <span className={`flex h-2 w-2 rounded-full ${savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
-                                ? "bg-emerald-500"
-                                : "bg-amber-500 animate-pulse"
+                              ? "bg-emerald-500"
+                              : "bg-amber-500 animate-pulse"
                               }`}></span>
                             <p className="text-xs font-semibold text-slate-500">
                               {savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
@@ -1171,8 +1171,8 @@ function PlannerContent() {
                                 onClick={handleSaveItinerary}
                                 disabled={saving || (savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary))}
                                 className={`w-full sm:w-auto rounded-full px-5 py-2.5 text-xs font-bold text-white transition shadow-md flex items-center justify-center cursor-pointer ${savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary)
-                                    ? "bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600 disabled:text-white disabled:shadow-none disabled:cursor-default"
-                                    : "bg-sky-600 hover:bg-sky-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed shadow-sky-100 disabled:shadow-none"
+                                  ? "bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600 disabled:text-white disabled:shadow-none disabled:cursor-default"
+                                  : "bg-sky-600 hover:bg-sky-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed shadow-sky-100 disabled:shadow-none"
                                   }`}
                               >
                                 {saving ? "Saving..." : savedItinerary && JSON.stringify(savedItinerary) === JSON.stringify(itinerary) ? "Saved ✓" : "Save Itinerary"}
@@ -1203,8 +1203,8 @@ function PlannerContent() {
                                 type="button"
                                 onClick={() => setActiveDayIndex(index)}
                                 className={`min-w-28 rounded-2xl border px-4 py-3 text-left transition shrink-0 cursor-pointer ${isActive
-                                    ? "border-sky-500 bg-sky-600 text-white shadow-lg shadow-sky-100"
-                                    : "border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-350 hover:bg-sky-50/70"
+                                  ? "border-sky-500 bg-sky-600 text-white shadow-lg shadow-sky-100"
+                                  : "border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-350 hover:bg-sky-50/70"
                                   }`}
                               >
                                 <span className={`text-[10px] font-bold uppercase tracking-wider block ${isActive ? "text-sky-100" : "text-slate-400"}`}>

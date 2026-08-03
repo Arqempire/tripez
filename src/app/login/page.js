@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const redirectIfSignedIn = async () => {
       if (!supabase) return;
 
@@ -38,7 +39,9 @@ export default function LoginPage() {
     };
 
     redirectIfSignedIn();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

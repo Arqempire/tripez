@@ -67,7 +67,7 @@ export async function GET(request) {
       const fetchedFromUnsplash = [];
 
       try {
-        const queryTerm = `${normalized} travel landmark`.trim();
+        const queryTerm = `${normalized} travel landscape photography`.trim();
         const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(queryTerm)}&per_page=3&orientation=landscape&client_id=${unsplashAccessKey}`;
 
         const res = await fetch(unsplashUrl, {

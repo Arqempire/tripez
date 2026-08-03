@@ -16,18 +16,21 @@ export default function RegisterPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    let active = true;
     const redirectIfSignedIn = async () => {
       if (!supabase) return;
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session?.user) {
+      if (active && session?.user) {
         router.replace("/dashboard");
       }
     };
 
     redirectIfSignedIn();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
