@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { LOCATION_DATA, ALL_COUNTRIES } from "@/lib/locations";
 import { DESTINATION_PHOTO_MAP, DEFAULT_FALLBACK_PHOTOS, normalizeDestination } from "@/lib/destinations";
+import Sidebar from "@/components/Sidebar";
 
 const TRAVEL_PHOTOS = [
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", // Beach
@@ -271,6 +272,7 @@ function PlannerContent() {
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -690,91 +692,16 @@ function PlannerContent() {
   return (
     <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased overflow-x-hidden w-full">
 
-      {/* DESKTOP SIDEBAR NAVIGATION */}
-      <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
-        <div className="space-y-8">
-          <Link href="/dashboard" className="flex items-center gap-3 px-2 hover:opacity-85 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
-              <LogoIcon />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">TripEZ</span>
-          </Link>
-
-          <nav className="space-y-1.5 font-sans">
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DashboardIcon />
-              <span className="text-sm">Dashboard</span>
-            </Link>
-
-            <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DocumentIcon />
-              <span className="text-sm">Document Vault</span>
-            </Link>
-
-            <Link href="/expenses" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <ExpenseIcon />
-              <span className="text-sm">Expense Tracker</span>
-            </Link>
-
-            <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <CollabIcon />
-              <span className="text-sm">Collaboration</span>
-            </Link>
-
-            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <SettingsIcon />
-              <span className="text-sm">Settings</span>
-            </Link>
-          </nav>
-        </div>
-
-        {/* User profile bottom item */}
-        <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 font-sans">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
-              {getInitials(userName)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
-              <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleSignOut}
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-            title="Sign Out"
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </aside>
-
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-5 left-4 right-4 bg-white/90 backdrop-blur-lg border border-slate-200/60 px-4 py-2.5 rounded-3xl flex items-center justify-around md:hidden z-40 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DashboardIcon />
-          <span>Dashboard</span>
-        </Link>
-        <Link href="/documents" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DocumentIcon />
-          <span>Vault</span>
-        </Link>
-        <Link href="/expenses" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <ExpenseIcon />
-          <span>Expenses</span>
-        </Link>
-        <Link href="/trip-collab" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <CollabIcon />
-          <span>Collab</span>
-        </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <SettingsIcon />
-          <span>Settings</span>
-        </Link>
-      </nav>
+      {/* REUSABLE SIDEBAR NAVIGATION */}
+      <Sidebar
+        userName={userName}
+        handleSignOut={handleSignOut}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+      />
 
       {/* MAIN CONTAINER */}
-      <main className="flex-1 md:pl-64 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen">
+      <main className={`flex-1 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen transition-all duration-300 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-64"}`}>
         <div className="px-4 py-8 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-6xl w-full space-y-8">
 
@@ -802,7 +729,7 @@ function PlannerContent() {
 
               {/* Trip Parameters Setup Form */}
               <section className="space-y-6 w-full">
-                <form onSubmit={handleGenerateItinerary} className="space-y-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xl shadow-sky-100/40 w-full">
+                <form onSubmit={handleGenerateItinerary} className="space-y-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-6 shadow-xl shadow-slate-200/60 w-full transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/40">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 tracking-tight">Trip Configuration</h2>
                     <p className="text-xs text-slate-500 mt-1">Specify destination parameters for custom AI scheduling.</p>
@@ -810,12 +737,12 @@ function PlannerContent() {
 
                   {/* Destination selector */}
                   <div className="space-y-3">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Destination</label>
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Destination</label>
 
                     <div className="grid gap-3.5 grid-cols-1">
                       {/* Country Selection */}
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <span className="absolute left-4 top-3.5 text-slate-500">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           </svg>
@@ -823,14 +750,14 @@ function PlannerContent() {
                         <select
                           value={selectedCountry}
                           onChange={(event) => handleCountrySelect(event.target.value)}
-                          className="w-full pl-11 pr-10 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer placeholder-slate-400"
+                          className="w-full pl-11 pr-10 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer placeholder-slate-500"
                         >
                           <option value="">Select Country...</option>
                           {ALL_COUNTRIES.map((country) => (
                             <option key={country} value={country}>{country}</option>
                           ))}
                         </select>
-                        <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                        <span className="absolute right-4 top-4 text-slate-500 pointer-events-none">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                           </svg>
@@ -841,8 +768,8 @@ function PlannerContent() {
                       {selectedCountry && (
                         countryHasData ? (
                           <div className="space-y-3.5">
-                            <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                              <span className="absolute left-4 top-3.5 text-slate-400">
+                            <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                              <span className="absolute left-4 top-3.5 text-slate-500">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 </svg>
@@ -850,7 +777,7 @@ function PlannerContent() {
                               <select
                                 value={selectedState}
                                 onChange={(event) => handleStateSelect(event.target.value)}
-                                className="w-full pl-11 pr-10 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                                className="w-full pl-11 pr-10 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                               >
                                 <option value="">Select State/Region...</option>
                                 {Object.keys(LOCATION_DATA[selectedCountry] || {}).map((state) => (
@@ -858,7 +785,7 @@ function PlannerContent() {
                                 ))}
                                 <option value="custom">Other / Custom...</option>
                               </select>
-                              <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                              <span className="absolute right-4 top-4 text-slate-500 pointer-events-none">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
@@ -866,8 +793,8 @@ function PlannerContent() {
                             </div>
 
                             {selectedState === "custom" && (
-                              <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                                <span className="absolute left-4 top-3.5 text-slate-400">
+                              <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                                <span className="absolute left-4 top-3.5 text-slate-500">
                                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                   </svg>
@@ -875,15 +802,15 @@ function PlannerContent() {
                                 <input
                                   value={customState}
                                   onChange={(event) => handleCustomStateChange(event.target.value)}
-                                  className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                                  className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                                   placeholder="Type custom state/region..."
                                 />
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                            <span className="absolute left-4 top-3.5 text-slate-400">
+                          <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                            <span className="absolute left-4 top-3.5 text-slate-500">
                               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               </svg>
@@ -891,7 +818,7 @@ function PlannerContent() {
                             <input
                               value={customState}
                               onChange={(event) => handleCustomStateChange(event.target.value)}
-                              className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                              className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                               placeholder="Type state/region (optional)..."
                             />
                           </div>
@@ -903,8 +830,8 @@ function PlannerContent() {
                         countryHasData ? (
                           selectedState && (
                             <div className="space-y-3.5">
-                              <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                                <span className="absolute left-4 top-3.5 text-slate-400">
+                              <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                                <span className="absolute left-4 top-3.5 text-slate-500">
                                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                   </svg>
@@ -912,7 +839,7 @@ function PlannerContent() {
                                 <select
                                   value={selectedPlace}
                                   onChange={(event) => handlePlaceSelect(event.target.value)}
-                                  className="w-full pl-11 pr-10 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                                  className="w-full pl-11 pr-10 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                                 >
                                   <option value="">Select Place...</option>
                                   {(LOCATION_DATA[selectedCountry]?.[selectedState] || []).map((place) => (
@@ -920,7 +847,7 @@ function PlannerContent() {
                                   ))}
                                   <option value="custom">Other / Custom...</option>
                                 </select>
-                                <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                                <span className="absolute right-4 top-4 text-slate-500 pointer-events-none">
                                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                   </svg>
@@ -928,8 +855,8 @@ function PlannerContent() {
                               </div>
 
                               {selectedPlace === "custom" && (
-                                <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                                  <span className="absolute left-4 top-3.5 text-slate-400">
+                                <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                                  <span className="absolute left-4 top-3.5 text-slate-500">
                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     </svg>
@@ -937,7 +864,7 @@ function PlannerContent() {
                                   <input
                                     value={customPlace}
                                     onChange={(event) => handleCustomPlaceChange(event.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                                    className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                                     placeholder="Type custom place..."
                                   />
                                 </div>
@@ -946,8 +873,8 @@ function PlannerContent() {
                           )
                         ) : (
                           selectedCountry && (
-                            <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                              <span className="absolute left-4 top-3.5 text-slate-400">
+                            <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                              <span className="absolute left-4 top-3.5 text-slate-500">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 </svg>
@@ -955,7 +882,7 @@ function PlannerContent() {
                               <input
                                 value={customPlace}
                                 onChange={(event) => handleCustomPlaceChange(event.target.value)}
-                                className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                                className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                                 placeholder="Type place or city..."
                               />
                             </div>
@@ -968,9 +895,9 @@ function PlannerContent() {
                   {/* Timeline start date, days and travellers info */}
                   <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Start Date</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 block">Start Date</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <span className="absolute left-4 top-3.5 text-slate-500">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
@@ -979,14 +906,14 @@ function PlannerContent() {
                           type="date"
                           value={form.startDate || ""}
                           onChange={(event) => setForm({ ...form, startDate: event.target.value })}
-                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none"
                         />
                       </div>
                     </div>
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Duration (Days)</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 block">Duration (Days)</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <span className="absolute left-4 top-3.5 text-slate-500">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
@@ -996,14 +923,14 @@ function PlannerContent() {
                           min="1"
                           value={form.days}
                           onChange={(event) => setForm({ ...form, days: event.target.value })}
-                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none"
                         />
                       </div>
                     </div>
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Travelers</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 block">Travelers</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <span className="absolute left-4 top-3.5 text-slate-500">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                             <circle cx="9" cy="7" r="4" />
@@ -1016,7 +943,7 @@ function PlannerContent() {
                           min="1"
                           value={form.travelers}
                           onChange={(event) => setForm({ ...form, travelers: event.target.value })}
-                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none"
                         />
                       </div>
                     </div>
@@ -1024,9 +951,9 @@ function PlannerContent() {
 
                   {/* Interests prompt */}
                   <div className="relative">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Interests & Vibes <span className="text-slate-400 font-normal lowercase">(optional)</span></label>
-                    <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                      <span className="absolute left-4 top-3.5 text-slate-400">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 block">Interests & Vibes <span className="text-slate-500 font-medium lowercase">(optional)</span></label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                      <span className="absolute left-4 top-3.5 text-slate-500">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
@@ -1034,7 +961,7 @@ function PlannerContent() {
                       <input
                         value={form.interests}
                         onChange={(event) => setForm({ ...form, interests: event.target.value })}
-                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                         placeholder="(Optional) e.g. food, museums, nightlife"
                       />
                     </div>
@@ -1043,18 +970,18 @@ function PlannerContent() {
                   {/* Budget & Style */}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Budget</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 block">Budget</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                         <select
                           value={form.budget}
                           onChange={(event) => setForm({ ...form, budget: event.target.value })}
-                          className="w-full pl-4.5 pr-8 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                          className="w-full pl-4.5 pr-8 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                         >
                           <option value="budget">Budget</option>
                           <option value="mid-range">Mid-range</option>
                           <option value="luxury">Luxury</option>
                         </select>
-                        <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                        <span className="absolute right-4 top-4 text-slate-500 pointer-events-none">
                           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                           </svg>
@@ -1062,19 +989,19 @@ function PlannerContent() {
                       </div>
                     </div>
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Style</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 block">Style</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                         <select
                           value={form.style}
                           onChange={(event) => setForm({ ...form, style: event.target.value })}
-                          className="w-full pl-4.5 pr-8 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                          className="w-full pl-4.5 pr-8 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                         >
                           <option value="balanced">Balanced</option>
                           <option value="relaxed">Relaxed</option>
                           <option value="adventurous">Adventurous</option>
                           <option value="romantic">Romantic</option>
                         </select>
-                        <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                        <span className="absolute right-4 top-4 text-slate-500 pointer-events-none">
                           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                           </svg>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Sidebar from "@/components/Sidebar";
 
 const STORAGE_KEY = "tripez-documents";
 const STORAGE_BUCKET = "user-files";
@@ -203,6 +204,7 @@ export default function DocumentsPage() {
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategoryTab, setSelectedCategoryTab] = useState("all");
   const [expandedPreviews, setExpandedPreviews] = useState({});
 
@@ -241,16 +243,8 @@ export default function DocumentsPage() {
       setUserId(currentUserId);
       setUserName(profileName);
 
-      // Try reading from user metadata first
+      // Read from session user metadata directly
       let userMetadataDocs = session.user?.user_metadata?.documents;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.user_metadata?.documents) {
-          userMetadataDocs = user.user_metadata.documents;
-        }
-      } catch (err) {
-        console.error("Failed to fetch fresh user metadata:", err);
-      }
 
       if (userMetadataDocs && Array.isArray(userMetadataDocs)) {
         setDocuments(userMetadataDocs);
@@ -448,91 +442,16 @@ export default function DocumentsPage() {
   return (
     <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased overflow-x-hidden w-full">
       
-      {/* DESKTOP SIDEBAR NAVIGATION */}
-      <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
-        <div className="space-y-8">
-          <Link href="/dashboard" className="flex items-center gap-3 px-2 hover:opacity-85 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
-              <LogoIcon />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">TripEZ</span>
-          </Link>
+      {/* REUSABLE SIDEBAR NAVIGATION */}
+      <Sidebar
+        userName={userName}
+        handleSignOut={handleSignOut}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+      />
 
-          <nav className="space-y-1.5 font-sans">
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DashboardIcon />
-              <span className="text-sm">Dashboard</span>
-            </Link>
-            
-            <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
-              <DocumentIcon />
-              <span className="text-sm">Document Vault</span>
-            </Link>
-
-            <Link href="/expenses" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <ExpenseIcon />
-              <span className="text-sm">Expense Tracker</span>
-            </Link>
-
-            <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <CollabIcon />
-              <span className="text-sm">Collaboration</span>
-            </Link>
-
-            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <SettingsIcon />
-              <span className="text-sm">Settings</span>
-            </Link>
-          </nav>
-        </div>
-
-        {/* User profile bottom item */}
-        <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 font-sans">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
-              {getInitials(userName)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
-              <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
-            </div>
-          </div>
-          <button 
-            onClick={handleSignOut}
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-            title="Sign Out"
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </aside>
-
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-5 left-4 right-4 bg-white/90 backdrop-blur-lg border border-slate-200/60 px-4 py-2.5 rounded-3xl flex items-center justify-around md:hidden z-40 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DashboardIcon />
-          <span>Dashboard</span>
-        </Link>
-        <Link href="/documents" className="flex flex-col items-center gap-1 text-[10px] font-bold text-sky-600 transition-colors">
-          <DocumentIcon />
-          <span>Vault</span>
-        </Link>
-        <Link href="/expenses" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <ExpenseIcon />
-          <span>Expenses</span>
-        </Link>
-        <Link href="/trip-collab" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <CollabIcon />
-          <span>Collab</span>
-        </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <SettingsIcon />
-          <span>Settings</span>
-        </Link>
-      </nav>
-
-      {/* MAIN CONTAINER */}
-      <main className="flex-1 md:pl-64 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen">
+      {/* MAIN CONTENT CONTAINER */}
+      <main className={`flex-1 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen transition-all duration-300 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-64"}`}>
         <div className="px-4 py-8 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-6xl space-y-8">
             
@@ -594,18 +513,19 @@ export default function DocumentsPage() {
             {/* Primary Workspace Grid */}
             <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr] items-start w-full">
               
-              {/* Add Document Form */}
+              {/* Document Entry Form */}
               <section className="space-y-6 w-full">
-                <form onSubmit={handleAddDocument} className="space-y-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xl shadow-sky-100/30 w-full">
+                <form onSubmit={handleAddDocument} className="space-y-5 rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xl shadow-slate-200/60 w-full transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/40">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">Upload Document</h2>
+                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">Add Document Record</h2>
+                    <p className="text-xs text-slate-500 mt-1">Record passport details, tickets, and booking PDFs.</p>
                   </div>
 
-                  {/* Title */}
+                  {/* Document Title */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Document Title</label>
-                    <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                      <span className="absolute left-4 top-3.5 text-slate-400">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Document Title</label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                      <span className="absolute left-4 top-3.5 text-slate-500">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
@@ -613,7 +533,7 @@ export default function DocumentsPage() {
                       <input
                         value={form.title}
                         onChange={(event) => setForm((currentForm) => ({ ...currentForm, title: event.target.value }))}
-                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                         placeholder="e.g. Passport Copy, Boarding Pass"
                       />
                     </div>
@@ -621,9 +541,9 @@ export default function DocumentsPage() {
 
                   {/* Category Selection */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Category</label>
-                    <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                      <span className="absolute left-4 top-3.5 text-slate-400">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Category</label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                      <span className="absolute left-4 top-3.5 text-slate-500">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                         </svg>
@@ -631,13 +551,13 @@ export default function DocumentsPage() {
                       <select
                         value={form.category}
                         onChange={(event) => setForm((currentForm) => ({ ...currentForm, category: event.target.value }))}
-                        className="w-full pl-11 pr-10 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                        className="w-full pl-11 pr-10 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                       >
                         {CATEGORIES.slice(1).map((cat) => (
                           <option key={cat.id} value={cat.id}>{cat.label}</option>
                         ))}
                       </select>
-                      <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                      <span className="absolute right-4 top-4 text-slate-500 pointer-events-none">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
@@ -647,15 +567,15 @@ export default function DocumentsPage() {
 
                   {/* Browse File Dropzone style */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Attach File (Optional)</label>
-                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-sky-400 bg-slate-50/30 hover:bg-sky-50/10 rounded-2xl px-6 py-6 transition cursor-pointer text-center group">
-                      <svg className="h-6 w-6 text-slate-400 mb-1.5 opacity-75 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Attach File <span className="text-slate-500 font-medium lowercase">(optional)</span></label>
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-sky-500 bg-slate-100/80 hover:bg-sky-50/30 rounded-2xl px-6 py-6 transition cursor-pointer text-center group shadow-xs">
+                      <svg className="h-6 w-6 text-slate-500 mb-1.5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      <span className="text-xs font-bold text-slate-700 truncate max-w-[200px] mb-1">
+                      <span className="text-xs font-extrabold text-slate-800 truncate max-w-[200px] mb-1">
                         {form.file ? form.file.name : "Select image or PDF (Max 1MB)..."}
                       </span>
-                      <span className="text-[10px] font-semibold text-slate-400">click to search locally</span>
+                      <span className="text-[10px] font-bold text-slate-500">click to search locally</span>
                       <input
                         type="file"
                         accept="image/*,.pdf"
@@ -664,7 +584,7 @@ export default function DocumentsPage() {
                       />
                     </label>
                     {form.file ? (
-                      <p className="mt-2 text-[10px] font-bold text-sky-700 flex items-center gap-1 px-1">
+                      <p className="mt-2 text-xs font-bold text-sky-700 flex items-center gap-1 px-1">
                         <span>✓ File selected:</span>
                         <span className="truncate max-w-[240px]">{form.file.name}</span>
                       </p>

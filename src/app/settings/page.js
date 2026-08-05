@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Sidebar from "@/components/Sidebar";
 
 // Inline SVG Icon components — same set used across the app
 const LogoIcon = () => (
@@ -119,12 +120,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ text: "", type: "" });
-
-  // Password form
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState({ text: "", type: "" });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -193,40 +189,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChangePassword = async (event) => {
-    event.preventDefault();
-    setSavingPassword(true);
-    setPasswordMessage({ text: "", type: "" });
-
-    if (newPassword.length < 6) {
-      setPasswordMessage({ text: "Password must be at least 6 characters.", type: "error" });
-      setSavingPassword(false);
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordMessage({ text: "Passwords do not match.", type: "error" });
-      setSavingPassword(false);
-      return;
-    }
-
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) throw error;
-
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordMessage({ text: "Password changed successfully!", type: "success" });
-    } catch (error) {
-      setPasswordMessage({ text: error.message || "Failed to change password.", type: "error" });
-    } finally {
-      setSavingPassword(false);
-    }
-  };
-
   const handleSignOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -249,285 +211,161 @@ export default function SettingsPage() {
 
   return (
     <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased">
+      {/* REUSABLE SIDEBAR NAVIGATION */}
+      <Sidebar
+        userName={userName}
+        handleSignOut={handleSignOut}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+      />
 
-      {/* DESKTOP SIDEBAR NAVIGATION */}
-      <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
-        <div className="space-y-8">
-          <Link href="/dashboard" className="flex items-center gap-3 px-2 hover:opacity-85 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
-              <LogoIcon />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">TripEZ</span>
-          </Link>
-
-          <nav className="space-y-1.5 font-sans">
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DashboardIcon />
-              <span className="text-sm">Dashboard</span>
-            </Link>
-            
-            <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DocumentIcon />
-              <span className="text-sm">Document Vault</span>
-            </Link>
-
-            <Link href="/expenses" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <ExpenseIcon />
-              <span className="text-sm">Expense Tracker</span>
-            </Link>
-
-            <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <CollabIcon />
-              <span className="text-sm">Collaboration</span>
-            </Link>
-
-            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
-              <SettingsIcon />
-              <span className="text-sm">Settings</span>
-            </Link>
-          </nav>
-        </div>
-
-        {/* User Card at bottom of Sidebar */}
-        <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 font-sans">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
-              {getInitials(userName)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
-              <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
-            </div>
-          </div>
-          
-          <button 
-            onClick={handleSignOut}
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-            title="Sign Out"
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </aside>
-
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-5 left-4 right-4 bg-white/90 backdrop-blur-lg border border-slate-200/60 px-4 py-2.5 rounded-3xl flex items-center justify-around md:hidden z-40 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DashboardIcon />
-          <span>Dashboard</span>
-        </Link>
-        <Link href="/documents" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DocumentIcon />
-          <span>Vault</span>
-        </Link>
-        <Link href="/expenses" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <ExpenseIcon />
-          <span>Expenses</span>
-        </Link>
-        <Link href="/trip-collab" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <CollabIcon />
-          <span>Collab</span>
-        </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-[10px] font-bold text-sky-600 transition-colors">
-          <SettingsIcon />
-          <span>Settings</span>
-        </Link>
-      </nav>
-
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 md:pl-64 min-h-screen pt-6 md:pt-0 pb-24 md:pb-8">
-        <div className="max-w-3xl mx-auto px-4 py-8 sm:px-8 sm:py-10 space-y-8">
+      {/* MAIN CONTENT CONTAINER */}
+      <main className={`flex-1 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen transition-all duration-300 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-64"}`}>
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-8 sm:py-10 space-y-8">
           
           {/* Page Header */}
           <header className="pb-6 border-b border-slate-200/60">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Settings</h1>
-            <p className="text-sm text-slate-500 mt-1.5 font-medium">Manage your profile and account preferences.</p>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Account Settings</h1>
+            <p className="text-sm text-slate-500 mt-1.5 font-medium">Manage your personal profile and account preferences.</p>
           </header>
 
-          {/* PROFILE SECTION */}
-          <section className="bg-white/80 border border-slate-200/60 rounded-3xl shadow-xs backdrop-blur-md overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
-                <UserIcon />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Profile Information</h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">Update your name and contact details.</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-5">
-              {/* Avatar Preview */}
-              <div className="flex items-center gap-5 pb-2">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-xl font-bold text-white shadow-lg">
-                  {getInitials(fullName || userName)}
+          <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr] items-start w-full">
+            {/* PROFILE SECTION */}
+            <section className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/60 backdrop-blur-md space-y-6 transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/40">
+              <div className="border-b border-slate-100 pb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-50 border border-sky-100 text-sky-600 shadow-xs">
+                  <UserIcon />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900">{fullName || userName}</p>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">{email}</p>
+                  <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Profile Information</h2>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">Update your display name and contact details.</p>
                 </div>
               </div>
 
-              {/* Full Name */}
-              <div>
-                <label htmlFor="fullName" className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Full name</label>
-                <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                  <input
-                    id="fullName"
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-2xl px-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                    placeholder="Your full name"
-                  />
+              <form onSubmit={handleSaveProfile} className="space-y-5">
+                {/* Avatar Preview */}
+                <div className="flex items-center gap-5 pb-2 border-b border-slate-100">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-xl font-bold text-white shadow-lg">
+                    {getInitials(fullName || userName)}
+                  </div>
+                  <div>
+                    <p className="text-base font-extrabold text-slate-900">{fullName || userName}</p>
+                    <p className="text-xs text-slate-500 font-semibold mt-0.5">{email}</p>
+                    <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 tracking-wider">Verified Traveler</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Email (read-only) */}
-              <div>
-                <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Email address</label>
-                <div className="relative rounded-2xl border border-slate-200 bg-slate-100/60">
-                  <input
-                    id="email"
-                    type="email"
-                    readOnly
-                    value={email}
-                    className="w-full rounded-2xl px-4 py-3 bg-transparent text-sm text-slate-500 outline-none cursor-not-allowed"
-                  />
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {/* Full Name */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="fullName" className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Full name</label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                      <input
+                        id="fullName"
+                        type="text"
+                        required
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full px-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
+                        placeholder="Your full name"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="phone" className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Phone number <span className="normal-case tracking-normal text-slate-500 font-normal">(optional)</span></label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                      <input
+                        id="phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full px-4 py-3 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
+                        placeholder="ex: +91 9797090909"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1.5 font-medium pl-1">Email cannot be changed for security reasons.</p>
-              </div>
 
-              {/* Phone */}
-              <div>
-                <label htmlFor="phone" className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Phone number <span className="normal-case tracking-normal text-slate-400">(optional)</span></label>
-                <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full rounded-2xl px-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                    placeholder="ex:+91 9797090909"
-                  />
+                {/* Email (read-only) */}
+                <div className="space-y-1.5">
+                  <label htmlFor="email" className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Email address</label>
+                  <div className="relative rounded-2xl border border-slate-200 bg-slate-100/60">
+                    <input
+                      id="email"
+                      type="email"
+                      readOnly
+                      value={email}
+                      className="w-full px-4 py-3 bg-transparent text-sm font-semibold text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium pl-1">Email address is managed by your authentication provider.</p>
                 </div>
-              </div>
 
-              {/* Profile Message */}
-              {profileMessage.text ? (
-                <div className={`rounded-2xl border px-4 py-3 text-xs font-semibold flex items-center gap-2 ${
-                  profileMessage.type === "success"
-                    ? "bg-emerald-50 border-emerald-100 text-emerald-700"
-                    : "bg-rose-50 border-rose-100 text-rose-700"
-                }`}>
-                  {profileMessage.type === "success" ? <CheckIcon /> : null}
-                  {profileMessage.text}
+                {/* Profile Message */}
+                {profileMessage.text ? (
+                  <div className={`rounded-2xl border px-4 py-3 text-xs font-semibold flex items-center gap-2 ${
+                    profileMessage.type === "success"
+                      ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                      : "bg-rose-50 border-rose-100 text-rose-700"
+                  }`}>
+                    {profileMessage.type === "success" ? <CheckIcon /> : null}
+                    {profileMessage.text}
+                  </div>
+                ) : null}
+
+                {/* Save Profile Button */}
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 px-8 py-3.5 text-xs font-bold text-white shadow-lg shadow-sky-100 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-75 disabled:pointer-events-none cursor-pointer"
+                >
+                  {savingProfile ? "Saving..." : "Save Profile Changes"}
+                </button>
+              </form>
+            </section>
+
+            {/* DANGER & ACCOUNT OVERVIEW ZONE */}
+            <div className="space-y-6">
+              <section className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xl shadow-slate-200/50 space-y-4">
+                <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Account Overview</h3>
+                <div className="space-y-3 text-xs font-semibold text-slate-600">
+                  <div className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-slate-500">Account Type</span>
+                    <span className="font-extrabold text-slate-900">Standard Explorer</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-slate-500">Authentication</span>
+                    <span className="font-extrabold text-slate-900">Cloud Sync Active</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-slate-500">Status</span>
+                    <span className="font-extrabold text-emerald-600">Active</span>
+                  </div>
                 </div>
-              ) : null}
+              </section>
 
-              {/* Save Profile Button */}
-              <button
-                type="submit"
-                disabled={savingProfile}
-                className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-sky-100 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-75 disabled:pointer-events-none cursor-pointer"
-              >
-                {savingProfile ? "Saving..." : "Save Changes"}
-              </button>
-            </form>
-          </section>
-
-          {/* SECURITY SECTION */}
-          <section className="bg-white/80 border border-slate-200/60 rounded-3xl shadow-xs backdrop-blur-md overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                <ShieldIcon />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Security</h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">Change your password to keep your account safe.</p>
-              </div>
+              <section className="bg-white border border-rose-200/80 rounded-3xl p-6 shadow-xl shadow-rose-100/30 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
+                    <LogoutIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900">Sign Out</h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">Safely terminate active browser session.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 px-6 py-3 text-xs font-bold text-rose-700 transition-all duration-200 cursor-pointer"
+                >
+                  Sign Out of TripEZ
+                </button>
+              </section>
             </div>
-
-            <form onSubmit={handleChangePassword} className="p-6 space-y-5">
-              {/* New Password */}
-              <div>
-                <label htmlFor="newPassword" className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">New password</label>
-                <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                  <input
-                    id="newPassword"
-                    type="password"
-                    required
-                    minLength={6}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full rounded-2xl px-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                    placeholder="At least 6 characters"
-                  />
-                </div>
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label htmlFor="confirmPassword" className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Confirm new password</label>
-                <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    required
-                    minLength={6}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full rounded-2xl px-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                    placeholder="Re-enter new password"
-                  />
-                </div>
-              </div>
-
-              {/* Password Message */}
-              {passwordMessage.text ? (
-                <div className={`rounded-2xl border px-4 py-3 text-xs font-semibold flex items-center gap-2 ${
-                  passwordMessage.type === "success"
-                    ? "bg-emerald-50 border-emerald-100 text-emerald-700"
-                    : "bg-rose-50 border-rose-100 text-rose-700"
-                }`}>
-                  {passwordMessage.type === "success" ? <CheckIcon /> : null}
-                  {passwordMessage.text}
-                </div>
-              ) : null}
-
-              {/* Change Password Button */}
-              <button
-                type="submit"
-                disabled={savingPassword}
-                className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-amber-100 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-75 disabled:pointer-events-none cursor-pointer"
-              >
-                {savingPassword ? "Updating..." : "Change Password"}
-              </button>
-            </form>
-          </section>
-
-          {/* DANGER ZONE */}
-          <section className="bg-white/80 border border-slate-200/60 rounded-3xl shadow-xs backdrop-blur-md overflow-hidden">
-            <div className="px-6 py-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
-                  <LogoutIcon />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Sign Out</h2>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">End your current session on this device.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 px-6 py-2.5 text-sm font-bold text-rose-700 transition-all duration-200 cursor-pointer"
-              >
-                Sign Out
-              </button>
-            </div>
-          </section>
+          </div>
 
         </div>
       </main>

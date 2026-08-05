@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Sidebar from "@/components/Sidebar";
 
 const STORAGE_PREFIX = "tripez-collab";
 
@@ -90,7 +91,7 @@ const getInitials = (name) => {
   return parts[0] ? parts[0][0].toUpperCase() : "TE";
 };
 
-const persistCollabData = async (userId, tripId, data) => {
+const persistCollabData = (userId, tripId, data) => {
   if (typeof window !== "undefined" && userId && tripId) {
     const key = `${STORAGE_PREFIX}-store-${userId}`;
     const stored = window.localStorage.getItem(key);
@@ -101,14 +102,9 @@ const persistCollabData = async (userId, tripId, data) => {
     store[tripId] = data;
     window.localStorage.setItem(key, JSON.stringify(store));
     
+    // Background async sync to Supabase without blocking UI
     if (supabase) {
-      try {
-        await supabase.auth.updateUser({
-          data: { collab: store }
-        });
-      } catch (error) {
-        console.error("Failed to sync collab data:", error);
-      }
+      supabase.auth.updateUser({ data: { collab: store } }).catch(() => {});
     }
   }
 };
@@ -137,6 +133,7 @@ export default function TripCollabPage() {
   const [message, setMessage] = useState("");
   const [collabStore, setCollabStore] = useState({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -159,10 +156,11 @@ export default function TripCollabPage() {
       setUserId(currentUserId);
       setUserName(profileName);
 
-      // Fetch user's saved trips
+      // Fetch user's saved trips efficiently
       const { data: savedTrips } = await supabase
         .from("trips")
         .select("id, name")
+        .eq("user_id", currentUserId)
         .order("created_at", { ascending: false });
 
       let activeTripId = "";
@@ -173,16 +171,8 @@ export default function TripCollabPage() {
         setTripName(savedTrips[0].name);
       }
 
-      // Fetch collaboration metadata from user metadata
+      // Read collaboration metadata directly from session user metadata
       let cloudCollabStore = session.user?.user_metadata?.collab;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.user_metadata?.collab) {
-          cloudCollabStore = user.user_metadata.collab;
-        }
-      } catch (err) {
-        console.error("Failed to load user metadata:", err);
-      }
 
       const activeStore = cloudCollabStore || {};
       setCollabStore(activeStore);
@@ -380,91 +370,16 @@ export default function TripCollabPage() {
   return (
     <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased">
       
-      {/* DESKTOP SIDEBAR NAVIGATION */}
-      <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
-        <div className="space-y-8">
-          <Link href="/dashboard" className="flex items-center gap-3 px-2 hover:opacity-85 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
-              <LogoIcon />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">TripEZ</span>
-          </Link>
+      {/* REUSABLE SIDEBAR NAVIGATION */}
+      <Sidebar
+        userName={userName}
+        handleSignOut={handleSignOut}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+      />
 
-          <nav className="space-y-1.5 font-sans">
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DashboardIcon />
-              <span className="text-sm">Dashboard</span>
-            </Link>
-            
-            <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DocumentIcon />
-              <span className="text-sm">Document Vault</span>
-            </Link>
-
-            <Link href="/expenses" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <ExpenseIcon />
-              <span className="text-sm">Expense Tracker</span>
-            </Link>
-
-            <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
-              <CollabIcon />
-              <span className="text-sm">Collaboration</span>
-            </Link>
-
-            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <SettingsIcon />
-              <span className="text-sm">Settings</span>
-            </Link>
-          </nav>
-        </div>
-
-        {/* User profile bottom item */}
-        <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 font-sans">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
-              {getInitials(userName)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
-              <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
-            </div>
-          </div>
-          <button 
-            onClick={handleSignOut}
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-            title="Sign Out"
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </aside>
-
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-5 left-4 right-4 bg-white/90 backdrop-blur-lg border border-slate-200/60 px-4 py-2.5 rounded-3xl flex items-center justify-around md:hidden z-40 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DashboardIcon />
-          <span>Dashboard</span>
-        </Link>
-        <Link href="/documents" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DocumentIcon />
-          <span>Vault</span>
-        </Link>
-        <Link href="/expenses" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <ExpenseIcon />
-          <span>Expenses</span>
-        </Link>
-        <Link href="/trip-collab" className="flex flex-col items-center gap-1 text-[10px] font-bold text-sky-600 transition-colors">
-          <CollabIcon />
-          <span>Collab</span>
-        </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <SettingsIcon />
-          <span>Settings</span>
-        </Link>
-      </nav>
-
-      {/* MAIN CONTAINER */}
-      <main className="flex-1 md:pl-64 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen">
+      {/* MAIN CONTENT CONTAINER */}
+      <main className={`flex-1 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen transition-all duration-300 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-64"}`}>
         <div className="px-4 py-8 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-6xl space-y-8">
             
@@ -545,34 +460,35 @@ export default function TripCollabPage() {
                   </div>
 
                   {/* Add Companion Form */}
-                  <form onSubmit={handleAddCompanion => handleAddTraveller(event)} className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/30 p-4">
+                  <form onSubmit={(event) => handleAddTraveller(event)} className="space-y-4 rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xl shadow-slate-200/50">
+                    <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">Add New Companion</h4>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="relative">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Full Name</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-white focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-100 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Full Name</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                           <input
                             value={travellerName}
                             onChange={(event) => setTravellerName(event.target.value)}
-                            className="w-full px-4.5 py-2.5 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                            className="w-full px-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                             placeholder="e.g. Kaiser"
                           />
                         </div>
                       </div>
-                      <div className="relative">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Role</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-white focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-100 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Role</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                           <select
                             value={travellerRole}
                             onChange={(event) => setTravellerRole(event.target.value)}
-                            className="w-full pl-4.5 pr-8 py-2.5 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                            className="w-full pl-4 pr-9 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                           >
                             <option value="Companion">Companion</option>
                             <option value="Co-Host">Co-Host</option>
                             <option value="Treasurer">Treasurer</option>
                             <option value="Navigator">Navigator</option>
                           </select>
-                          <span className="absolute right-3 top-3.5 text-slate-400 pointer-events-none">
-                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <span className="absolute right-3.5 top-3.5 text-slate-500 pointer-events-none">
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </span>
@@ -581,7 +497,7 @@ export default function TripCollabPage() {
                     </div>
                     <button 
                       type="submit" 
-                      className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 py-3 text-xs font-bold text-white shadow-md transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
+                      className="w-full rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 py-3.5 text-xs font-bold text-white shadow-lg shadow-sky-100 transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
                     >
                       Add Traveller
                     </button>
@@ -700,51 +616,51 @@ export default function TripCollabPage() {
                   </div>
 
                   {/* Add Shared Expense Form */}
-                  <form onSubmit={handleAddExpense} className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4.5 space-y-4">
-                    <p className="text-xs font-bold text-slate-900">Add shared expense</p>
+                  <form onSubmit={handleAddExpense} className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 space-y-4 shadow-xl shadow-slate-200/50">
+                    <p className="text-sm font-extrabold text-slate-900 tracking-tight">Add Shared Expense</p>
                     
                     <div className="space-y-3.5">
-                      <div className="relative">
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Description</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-white focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-100 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Description</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                           <input
                             value={expenseForm.title}
                             onChange={(event) => setExpenseForm({ ...expenseForm, title: event.target.value })}
-                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                            className="w-full px-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                             placeholder="Hotel, transport, food"
                           />
                         </div>
                       </div>
                       
                       <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="relative">
-                          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Amount (₹)</label>
-                          <div className="relative rounded-xl border border-slate-200 bg-white focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-100 transition-all duration-200">
+                        <div className="space-y-1">
+                          <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Amount (₹)</label>
+                          <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                             <input
                               type="number"
                               min="0"
                               value={expenseForm.amount}
                               onChange={(event) => setExpenseForm({ ...expenseForm, amount: event.target.value })}
-                              className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                              className="w-full px-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                               placeholder="1500"
                             />
                           </div>
                         </div>
                         
-                        <div className="relative">
-                          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Paid By</label>
-                          <div className="relative rounded-xl border border-slate-200 bg-white focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-100 transition-all duration-200">
+                        <div className="space-y-1">
+                          <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Paid By</label>
+                          <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                             <select
                               value={expenseForm.paidBy}
                               onChange={(event) => setExpenseForm({ ...expenseForm, paidBy: event.target.value })}
-                              className="w-full pl-4.5 pr-8 py-2.5 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                              className="w-full pl-4 pr-9 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                             >
                               {members.map((member) => (
                                 <option key={member.id} value={member.name}>{member.name}</option>
                               ))}
                             </select>
-                            <span className="absolute right-3 top-3.5 text-slate-400 pointer-events-none">
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <span className="absolute right-3.5 top-3.5 text-slate-500 pointer-events-none">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                               </svg>
                             </span>
@@ -755,7 +671,7 @@ export default function TripCollabPage() {
 
                     <button 
                       type="submit" 
-                      className="w-full rounded-xl bg-slate-900 hover:bg-slate-800 py-3 text-xs font-bold text-white shadow-md transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
+                      className="w-full rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 py-3.5 text-xs font-bold text-white shadow-lg shadow-sky-100 transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
                     >
                       Save Shared Expense
                     </button>

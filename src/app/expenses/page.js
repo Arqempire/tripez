@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Sidebar from "@/components/Sidebar";
 
 const STORAGE_PREFIX = "tripez-expenses";
 
@@ -139,6 +140,7 @@ export default function ExpensesPage() {
   const [form, setForm] = useState({ title: "", amount: "", category: "Food", note: "" });
   const [message, setMessage] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [rates, setRates] = useState({
     USD: 1,
@@ -179,26 +181,10 @@ export default function ExpensesPage() {
       setUserId(currentUserId);
       setUserName(profileName);
 
-      // Try loading from user metadata first
+      // Read from session user metadata directly
       let userMetadataExpenses = session.user?.user_metadata?.expenses;
       let userMetadataBudget = session.user?.user_metadata?.budget;
       let userMetadataCurrency = session.user?.user_metadata?.currency;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.user_metadata) {
-          if (user.user_metadata.expenses) {
-            userMetadataExpenses = user.user_metadata.expenses;
-          }
-          if (user.user_metadata.budget !== undefined) {
-            userMetadataBudget = user.user_metadata.budget;
-          }
-          if (user.user_metadata.currency) {
-            userMetadataCurrency = user.user_metadata.currency;
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load user metadata:", err);
-      }
 
       if (userMetadataExpenses && Array.isArray(userMetadataExpenses)) {
         setExpenses(userMetadataExpenses);
@@ -394,92 +380,15 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#eef6ff_50%,_#ffffff_100%)] text-slate-900 font-sans antialiased">
-      
-      {/* DESKTOP SIDEBAR NAVIGATION */}
-      <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
-        <div className="space-y-8">
-          <Link href="/dashboard" className="flex items-center gap-3 px-2 hover:opacity-85 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
-              <LogoIcon />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">TripEZ</span>
-          </Link>
+      <Sidebar
+        userName={userName}
+        handleSignOut={handleSignOut}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+      />
 
-          <nav className="space-y-1.5 font-sans">
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DashboardIcon />
-              <span className="text-sm">Dashboard</span>
-            </Link>
-            
-            <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DocumentIcon />
-              <span className="text-sm">Document Vault</span>
-            </Link>
-
-            <Link href="/expenses" className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
-              <ExpenseIcon />
-              <span className="text-sm">Expense Tracker</span>
-            </Link>
-
-            <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <CollabIcon />
-              <span className="text-sm">Collaboration</span>
-            </Link>
-
-            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <SettingsIcon />
-              <span className="text-sm">Settings</span>
-            </Link>
-          </nav>
-        </div>
-
-        {/* User profile bottom item */}
-        <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 font-sans">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
-              {getInitials(userName)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
-              <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
-            </div>
-          </div>
-          <button 
-            onClick={handleSignOut}
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-            title="Sign Out"
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </aside>
-
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-5 left-4 right-4 bg-white/90 backdrop-blur-lg border border-slate-200/60 px-4 py-2.5 rounded-3xl flex items-center justify-around md:hidden z-40 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DashboardIcon />
-          <span>Dashboard</span>
-        </Link>
-        <Link href="/documents" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DocumentIcon />
-          <span>Vault</span>
-        </Link>
-        <Link href="/expenses" className="flex flex-col items-center gap-1 text-[10px] font-bold text-sky-600 transition-colors">
-          <ExpenseIcon />
-          <span>Expenses</span>
-        </Link>
-        <Link href="/trip-collab" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <CollabIcon />
-          <span>Collab</span>
-        </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <SettingsIcon />
-          <span>Settings</span>
-        </Link>
-      </nav>
-
-      {/* MAIN CONTAINER */}
-      <main className="flex-1 md:pl-64 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen">
+      {/* MAIN CONTENT CONTAINER */}
+      <main className={`flex-1 pt-6 md:pt-0 pb-24 md:pb-8 min-h-screen transition-all duration-300 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-64"}`}>
         <div className="px-4 py-8 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-6xl space-y-8">
             
@@ -544,20 +453,22 @@ export default function ExpensesPage() {
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200/60 bg-white p-4">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trip Budget</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={budget}
-                        onChange={(event) => setBudget(event.target.value)}
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4.5 py-2.5 text-sm font-semibold outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-100"
-                        placeholder="1200"
-                      />
+                    <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm space-y-1.5">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Trip Budget</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <input
+                          type="number"
+                          min="0"
+                          value={budget}
+                          onChange={(event) => setBudget(event.target.value)}
+                          className="w-full px-4 py-2.5 bg-transparent text-sm font-bold text-slate-900 outline-none placeholder-slate-500"
+                          placeholder="1200"
+                        />
+                      </div>
                     </div>
-                    <div className="rounded-2xl border border-dashed border-amber-200 bg-white p-4 flex flex-col justify-center">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Spent So Far</p>
-                      <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
+                    <div className="rounded-2xl border border-slate-200/90 bg-white p-5 flex flex-col justify-center shadow-sm">
+                      <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700">Spent So Far</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 tracking-tight">
                         {formatCurrency(totalExpenses, currency)}
                       </p>
                     </div>
@@ -692,28 +603,29 @@ export default function ExpensesPage() {
                   </div>
 
                   {/* Add Expense Mini-form */}
-                  <form onSubmit={handleAddExpense} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+                  <form onSubmit={handleAddExpense} className="space-y-4 rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xl shadow-slate-200/50">
+                    <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Add New Purchase</h3>
                     <div className="grid gap-4 sm:grid-cols-[1.2fr_0.8fr]">
-                      <div className="relative">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Expense Title</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Expense Title</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                           <input
                             value={form.title}
                             onChange={(event) => setForm((currentForm) => ({ ...currentForm, title: event.target.value }))}
-                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none"
+                            className="w-full px-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                             placeholder="e.g. Hotel stay, Flight"
                           />
                         </div>
                       </div>
-                      <div className="relative">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Amount ({CURRENCY_SYMBOLS[currency] || CURRENCY_SYMBOLS.INR})</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Amount ({CURRENCY_SYMBOLS[currency] || CURRENCY_SYMBOLS.INR})</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                           <input
                             type="number"
                             min="0"
                             value={form.amount}
                             onChange={(event) => setForm((currentForm) => ({ ...currentForm, amount: event.target.value }))}
-                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none"
+                            className="w-full px-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                             placeholder="120"
                           />
                         </div>
@@ -721,13 +633,13 @@ export default function ExpensesPage() {
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-[0.8fr_1.2fr]">
-                      <div className="relative">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Category</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Category</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                           <select
                             value={form.category}
                             onChange={(event) => setForm((currentForm) => ({ ...currentForm, category: event.target.value }))}
-                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                            className="w-full pl-4 pr-10 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                           >
                             <option value="Food">Food</option>
                             <option value="Stay">Stay</option>
@@ -735,20 +647,20 @@ export default function ExpensesPage() {
                             <option value="Activities">Activities</option>
                             <option value="Other">Other</option>
                           </select>
-                          <span className="absolute right-3 top-3.5 text-slate-400 pointer-events-none">
-                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <span className="absolute right-3.5 top-3.5 text-slate-500 pointer-events-none">
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </span>
                         </div>
                       </div>
-                      <div className="relative">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Notes</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-100/60 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Notes</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                           <input
                             value={form.note}
                             onChange={(event) => setForm((currentForm) => ({ ...currentForm, note: event.target.value }))}
-                            className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-900 outline-none"
+                            className="w-full px-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                             placeholder="e.g. Dinner at Dal lake, taxi fare"
                           />
                         </div>
@@ -756,12 +668,12 @@ export default function ExpensesPage() {
                     </div>
 
                     {message ? (
-                      <p className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-2.5 rounded-xl border border-amber-100 animate-fade-in">{message}</p>
+                      <p className="text-xs font-semibold text-sky-700 bg-sky-50 px-3 py-2.5 rounded-xl border border-sky-100 animate-fade-in">{message}</p>
                     ) : null}
 
                     <button 
                       type="submit" 
-                      className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 py-3 text-xs font-bold text-white shadow-md transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
+                      className="w-full rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 py-3.5 text-xs font-bold text-white shadow-lg shadow-sky-100 transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
                     >
                       Add Purchase
                     </button>
@@ -769,34 +681,33 @@ export default function ExpensesPage() {
                 </div>
 
                 {/* Currency Converter */}
-                <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-100/50 backdrop-blur-md space-y-4">
+                <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xl shadow-slate-200/50 space-y-4">
                   <div>
-                    <p className="text-[16px] font-bold uppercase tracking-widest text-sky-700">Currency Converter</p>
-
+                    <p className="text-sm font-extrabold uppercase tracking-wider text-sky-700">Currency Converter</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="grid gap-3.5 grid-cols-3">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">Amount</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 block">Amount</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 transition-all duration-200 shadow-xs">
                           <input
                             type="number"
                             min="0"
                             value={converterForm.amount}
                             onChange={(event) => setConverterForm({ ...converterForm, amount: event.target.value })}
-                            className="w-full px-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none"
+                            className="w-full px-3 py-2.5 bg-transparent text-xs font-bold text-slate-900 outline-none placeholder-slate-500"
                             placeholder="100"
                           />
                         </div>
                       </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">From</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 block">From</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 transition-all duration-200 shadow-xs">
                           <select
                             value={converterForm.from}
                             onChange={(event) => setConverterForm({ ...converterForm, from: event.target.value })}
-                            className="w-full pl-3 pr-6 py-2 bg-transparent text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer"
+                            className="w-full pl-3 pr-7 py-2.5 bg-transparent text-xs font-bold text-slate-900 outline-none appearance-none cursor-pointer"
                           >
                             <option value="USD">USD ($)</option>
                             <option value="INR">INR (₹)</option>
@@ -808,20 +719,20 @@ export default function ExpensesPage() {
                             <option value="AED">AED (Dh)</option>
                             <option value="SGD">SGD (S$)</option>
                           </select>
-                          <span className="absolute right-2 top-2.5 text-slate-400 pointer-events-none">
+                          <span className="absolute right-2.5 top-3 text-slate-500 pointer-events-none">
                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </span>
                         </div>
                       </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">To</label>
-                        <div className="relative rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 block">To</label>
+                        <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 transition-all duration-200 shadow-xs">
                           <select
                             value={converterForm.to}
                             onChange={(event) => setConverterForm({ ...converterForm, to: event.target.value })}
-                            className="w-full pl-3 pr-6 py-2 bg-transparent text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer"
+                            className="w-full pl-3 pr-7 py-2.5 bg-transparent text-xs font-bold text-slate-900 outline-none appearance-none cursor-pointer"
                           >
                             <option value="USD">USD ($)</option>
                             <option value="INR">INR (₹)</option>
@@ -833,7 +744,7 @@ export default function ExpensesPage() {
                             <option value="AED">AED (Dh)</option>
                             <option value="SGD">SGD (S$)</option>
                           </select>
-                          <span className="absolute right-2 top-2.5 text-slate-400 pointer-events-none">
+                          <span className="absolute right-2.5 top-3 text-slate-500 pointer-events-none">
                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>

@@ -3,10 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { LOCATION_DATA, ALL_COUNTRIES } from "@/lib/locations";
 import { DESTINATION_PHOTO_MAP, DEFAULT_FALLBACK_PHOTOS, normalizeDestination } from "@/lib/destinations";
+import Sidebar from "@/components/Sidebar";
 
 // Inline SVG Icon components for premium aesthetics and zero dependency lag
 const LogoIcon = () => (
@@ -40,6 +41,20 @@ const ExpenseIcon = () => (
     <path d="M6 8h12" />
     <path d="m6 13 8.5 8" />
     <path d="M6 13h3a4 4 0 0 0 0-8" />
+  </svg>
+);
+
+const AnalyticsIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10" />
+    <line x1="12" y1="20" x2="12" y2="4" />
+    <line x1="6" y1="20" x2="6" y2="14" />
+  </svg>
+);
+
+const FlightIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 10l-4-8-1 0 2 8-5 0-2-3-1 0 1 5-1 5 1 0 2-3 5 0-2 8 1 0 4-8 5 0c1.5 0 2.5-1 2.5-2s-1-2-2.5-2l-5 0z" />
   </svg>
 );
 
@@ -330,6 +345,9 @@ export default function DashboardPage() {
   const [savingTrip, setSavingTrip] = useState(false);
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [trips, setTrips] = useState([]);
   const [activeTripId, setActiveTripId] = useState(null);
   const [savedTrip, setSavedTrip] = useState(null);
@@ -359,6 +377,8 @@ export default function DashboardPage() {
   const [customPlace, setCustomPlace] = useState("");
   const [tripToDelete, setTripToDelete] = useState(null);
   const [tripCreatedSuccessModal, setTripCreatedSuccessModal] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // "all", "ready", "draft"
 
   const getDestinationString = (cSel, cCust, sSel, sCust, pSel, pCust) => {
     const country = cSel === "custom" ? cCust : cSel;
@@ -407,12 +427,19 @@ export default function DashboardPage() {
     syncDestinationString(selectedCountry, customCountry, selectedState, customState, value, customPlace);
   };
 
-  const handleCustomPlaceChange = (val) => {
-    setCustomPlace(val);
-    syncDestinationString(selectedCountry, customCountry, selectedState, customState, selectedPlace, val);
-  };
+  const filteredTrips = useMemo(() => {
+    return trips.filter((trip) => {
+      const matchesSearch =
+        !searchQuery.trim() ||
+        (trip.name && trip.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (trip.destination && trip.destination.toLowerCase().includes(searchQuery.toLowerCase()));
 
-
+      const isReady = Boolean(trip.itinerary);
+      if (statusFilter === "ready") return matchesSearch && isReady;
+      if (statusFilter === "draft") return matchesSearch && !isReady;
+      return matchesSearch;
+    });
+  }, [trips, searchQuery, statusFilter]);
 
   useEffect(() => {
     let active = true;
@@ -437,6 +464,7 @@ export default function DashboardPage() {
       const profileName = session.user?.user_metadata?.full_name || session.user?.email || "your account";
       setUserId(session.user.id);
       setUserName(profileName);
+      setUserEmail(session.user?.email || "");
 
       const { data: savedTrips, error } = await supabase
         .from("trips")
@@ -706,181 +734,144 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {/* DESKTOP SIDEBAR NAVIGATION */}
-      <aside className="hidden md:flex flex-col justify-between fixed top-0 bottom-0 left-0 w-64 bg-white/70 border-r border-slate-200/60 backdrop-blur-md p-6 z-30">
-        <div className="space-y-8">
-          <Link href="/dashboard" className="flex items-center gap-3 px-2 hover:opacity-85 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-sky-100">
-              <LogoIcon />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">TripEZ</span>
-          </Link>
-
-          <nav className="space-y-1.5 font-sans">
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-sky-50 text-sky-700 font-semibold border border-sky-100/50 transition-all duration-200">
-              <DashboardIcon />
-              <span className="text-sm">Dashboard</span>
-            </Link>
-
-            <Link href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <DocumentIcon />
-              <span className="text-sm">Document Vault</span>
-            </Link>
-
-            <Link href="/expenses" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <ExpenseIcon />
-              <span className="text-sm">Expense Tracker</span>
-            </Link>
-
-            <Link href="/trip-collab" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <CollabIcon />
-              <span className="text-sm">Collaboration</span>
-            </Link>
-
-            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50/50 transition-all duration-200">
-              <SettingsIcon />
-              <span className="text-sm">Settings</span>
-            </Link>
-          </nav>
-        </div>
-
-        {/* User Card at bottom of Sidebar */}
-        <div className="pt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 font-sans">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-sm font-bold text-white shadow-md">
-              {getInitials(userName)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Traveler</p>
-              <p className="text-sm font-bold text-slate-900 truncate" title={userName}>{userName}</p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSignOut}
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-            title="Sign Out"
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </aside>
-
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-5 left-4 right-4 bg-white/90 backdrop-blur-lg border border-slate-200/60 px-4 py-2.5 rounded-3xl flex items-center justify-around md:hidden z-40 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[10px] font-bold text-sky-600 transition-colors">
-          <DashboardIcon />
-          <span>Dashboard</span>
-        </Link>
-        <Link href="/documents" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <DocumentIcon />
-          <span>Vault</span>
-        </Link>
-        <Link href="/expenses" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <ExpenseIcon />
-          <span>Expenses</span>
-        </Link>
-        <Link href="/trip-collab" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <CollabIcon />
-          <span>Collab</span>
-        </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <SettingsIcon />
-          <span>Settings</span>
-        </Link>
-      </nav>
+      {/* REUSABLE SIDEBAR & MOBILE NAVIGATION */}
+      <Sidebar
+        userName={userName}
+        handleSignOut={handleSignOut}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+      />
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 md:pl-64 min-h-screen pt-6 md:pt-0 pb-24 md:pb-8">
+      <main className={`flex-1 min-h-screen pt-6 md:pt-0 pb-24 md:pb-8 transition-all duration-300 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-64"}`}>
         <div className="max-w-7xl mx-auto px-4 py-8 sm:px-8 sm:py-10 space-y-8">
 
-          {/* Greeting Header */}
+          {/* Greeting Header & User Profile Dropdown */}
           <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200/60">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-sky-700">{currentDate}</p>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1 tracking-tight">Welcome back, {userName} 👋</h1>
+            </div>
 
+            {/* TOP RIGHT USER PROFILE ICON & DROPDOWN */}
+            <div className="relative self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-2 p-1 rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 shadow-md shadow-slate-200/50 hover:shadow-lg hover:border-sky-300 transition-all duration-200 cursor-pointer group"
+                title="Account & Profile"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-xs font-bold text-white shadow-xs group-hover:scale-105 transition-transform">
+                  {getInitials(userName)}
+                </div>
+                <svg className={`h-4 w-4 text-slate-500 mr-1.5 transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Profile Dropdown Menu */}
+              {isProfileMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileMenuOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-64 rounded-3xl border border-slate-200/90 bg-white p-3 shadow-2xl shadow-slate-300/60 z-50 animate-scale-up backdrop-blur-md">
+                    {/* User Card */}
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 mb-2">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-sm font-bold text-white shadow-md">
+                        {getInitials(userName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-extrabold text-slate-900 truncate" title={userName}>{userName}</p>
+                        <p className="text-[11px] text-slate-500 truncate" title={userEmail}>{userEmail || "Signed in"}</p>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-700 tracking-wider">Active</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 font-sans">
+                      <Link
+                        href="/settings"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all"
+                      >
+                        <SettingsIcon />
+                        Account Settings
+                      </Link>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-slate-100">
+                      <button
+                        onClick={() => { setIsProfileMenuOpen(false); handleSignOut(); }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                      >
+                        <LogoutIcon />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </header>
 
-          {/* Quick Statistics Banner */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Stat: Total Trips */}
-            <div className="bg-white/80 border border-slate-200/60 p-5 rounded-3xl shadow-xs flex items-center gap-4 backdrop-blur-md">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 shadow-inner">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p>
-                <p className="text-2xl font-bold text-slate-900 mt-0.5">{trips.length}</p>
-              </div>
-            </div>
+          {/* Quick Tools Banner */}
+          <section className="space-y-3">
+            <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-700 px-1">Quick Tools & Features</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
+              <Link href="/flights" className="h-24 group rounded-3xl border border-slate-200/90 bg-white px-5 py-4 shadow-md shadow-slate-200/50 hover:shadow-xl hover:shadow-sky-200/60 hover:border-sky-400 hover:bg-sky-50/40 transition-all duration-300 ease-out transform hover:-translate-y-1.5 flex items-center min-w-0">
+                <div className="flex items-center gap-4 min-w-0 w-full">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 border border-sky-100 text-sky-600 group-hover:bg-sky-100 group-hover:border-sky-200 group-hover:scale-110 transition-all duration-300 shadow-xs">
+                    <FlightIcon />
+                  </div>
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <p className="text-sm font-bold text-slate-900 group-hover:text-sky-700 transition-colors truncate">Flight Search</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">Google Flights fares</p>
+                  </div>
+                </div>
+              </Link>
 
-            {/* Stat: Ready Plans */}
-            <div className="bg-white/80 border border-slate-200/60 p-5 rounded-3xl shadow-xs flex items-center gap-4 backdrop-blur-md">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-inner">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Itineraries Ready</p>
-                <p className="text-2xl font-bold text-slate-900 mt-0.5">{trips.filter(t => t.itinerary).length}</p>
-              </div>
-            </div>
+              <Link href="/analytics" className="h-24 group rounded-3xl border border-slate-200/90 bg-white px-5 py-4 shadow-md shadow-slate-200/50 hover:shadow-xl hover:shadow-emerald-200/60 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all duration-300 ease-out transform hover:-translate-y-1.5 flex items-center min-w-0">
+                <div className="flex items-center gap-4 min-w-0 w-full">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 group-hover:bg-emerald-100 group-hover:border-emerald-200 group-hover:scale-110 transition-all duration-300 shadow-xs">
+                    <AnalyticsIcon />
+                  </div>
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <p className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">Travel Analytics</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">AI activity & trip stats</p>
+                  </div>
+                </div>
+              </Link>
 
-            {/* Stat: Latest Venture */}
-            <div className="bg-white/80 border border-slate-200/60 p-5 rounded-3xl shadow-xs flex items-center gap-4 md:col-span-2 backdrop-blur-md">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 shadow-inner">
-                <MapPinIcon />
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Latest Venture</p>
-                <p className="text-base font-bold text-slate-900 mt-0.5 truncate" title={trips[0] ? formatDestinationDisplay(trips[0].destination) : "Start planning below!"}>
-                  {trips[0] ? formatDestinationDisplay(trips[0].destination) : "Start planning below!"}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Quick Access Tools Dashboard */}
-          <section className="space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 px-1">Quick Tools Access</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <Link href="/documents" className="group rounded-3xl border border-slate-200/70 bg-white p-5 shadow-xs hover:shadow-md hover:border-sky-300 hover:bg-sky-50/20 transition-all duration-300 transform hover:-translate-y-0.5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 group-hover:bg-sky-100 transition-colors shadow-inner">
+              <Link href="/documents" className="h-24 group rounded-3xl border border-slate-200/90 bg-white px-5 py-4 shadow-md shadow-slate-200/50 hover:shadow-xl hover:shadow-sky-200/60 hover:border-sky-400 hover:bg-sky-50/40 transition-all duration-300 ease-out transform hover:-translate-y-1.5 flex items-center min-w-0">
+                <div className="flex items-center gap-4 min-w-0 w-full">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 border border-sky-100 text-sky-600 group-hover:bg-sky-100 group-hover:border-sky-200 group-hover:scale-110 transition-all duration-300 shadow-xs">
                     <DocumentIcon />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900 group-hover:text-sky-700 transition-colors">Document Vault</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Store booking and travel files</p>
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <p className="text-sm font-bold text-slate-900 group-hover:text-sky-700 transition-colors truncate">Document Vault</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">Store booking files</p>
                   </div>
                 </div>
               </Link>
 
-              <Link href="/expenses" className="group rounded-3xl border border-slate-200/70 bg-white p-5 shadow-xs hover:shadow-md hover:border-amber-300 hover:bg-amber-50/20 transition-all duration-300 transform hover:-translate-y-0.5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors shadow-inner">
+              <Link href="/expenses" className="h-24 group rounded-3xl border border-slate-200/90 bg-white px-5 py-4 shadow-md shadow-slate-200/50 hover:shadow-xl hover:shadow-amber-200/60 hover:border-amber-400 hover:bg-amber-50/40 transition-all duration-300 ease-out transform hover:-translate-y-1.5 flex items-center min-w-0">
+                <div className="flex items-center gap-4 min-w-0 w-full">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 group-hover:bg-amber-100 group-hover:border-amber-200 group-hover:scale-110 transition-all duration-300 shadow-xs">
                     <ExpenseIcon />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors">Expense Tracker</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Track budgets and spending</p>
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <p className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors truncate">Expense Tracker</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">Track budgets & spending</p>
                   </div>
                 </div>
               </Link>
 
-              <Link href="/trip-collab" className="group rounded-3xl border border-slate-200/70 bg-white p-5 shadow-xs hover:shadow-md hover:border-violet-300 hover:bg-violet-50/20 transition-all duration-300 transform hover:-translate-y-0.5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 group-hover:bg-violet-100 transition-colors shadow-inner">
+              <Link href="/trip-collab" className="h-24 group rounded-3xl border border-slate-200/90 bg-white px-5 py-4 shadow-md shadow-slate-200/50 hover:shadow-xl hover:shadow-violet-200/60 hover:border-violet-400 hover:bg-violet-50/40 transition-all duration-300 ease-out transform hover:-translate-y-1.5 flex items-center min-w-0">
+                <div className="flex items-center gap-4 min-w-0 w-full">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-50 border border-violet-100 text-violet-600 group-hover:bg-violet-100 group-hover:border-violet-200 group-hover:scale-110 transition-all duration-300 shadow-xs">
                     <CollabIcon />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900 group-hover:text-violet-700 transition-colors">Trip Collaboration</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Invite friends and share plans</p>
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <p className="text-sm font-bold text-slate-900 group-hover:text-violet-700 transition-colors truncate">Trip Collaboration</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">Invite friends & share</p>
                   </div>
                 </div>
               </Link>
@@ -888,63 +879,68 @@ export default function DashboardPage() {
           </section>
 
           {/* Primary Action Columns */}
-          <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
+          <div className="grid gap-8 lg:grid-cols-[1fr_1fr] items-start">
 
             {/* LEFT COLUMN: Create a Trip Form */}
             <section className="space-y-6">
-              <div className="bg-white/80 border border-slate-200/70 rounded-3xl p-6 shadow-xl shadow-slate-100/50 backdrop-blur-md space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 tracking-tight">Plan a New Trip</h2>
-                  <p className="text-xs text-slate-500 mt-1">Specify destination and preferences to launch your AI assistant.</p>
+              <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xl shadow-slate-200/60 backdrop-blur-md space-y-5 transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/40">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div>
+                    <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Plan a New Trip</h2>
+                    <p className="text-xs text-slate-500 mt-0.5 font-medium">Specify destination and preferences to launch your AI assistant.</p>
+                  </div>
+                  <span className="shrink-0 flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 border border-sky-100 text-sky-600 shadow-xs">
+                    <PlusIcon />
+                  </span>
                 </div>
 
                 {message ? (
-                  <div className="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3 text-xs text-sky-700 flex items-start gap-2.5 animate-fade-in">
-                    <svg className="h-4 w-4 shrink-0 text-sky-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <div className="rounded-2xl bg-sky-50 border border-sky-200 px-4 py-3 text-xs font-semibold text-sky-800 flex items-start gap-2.5 animate-fade-in shadow-xs">
+                    <svg className="h-4 w-4 shrink-0 text-sky-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>{message}</span>
                   </div>
                 ) : null}
 
-                <form onSubmit={handleCreateTrip} className="space-y-5">
+                <form onSubmit={handleCreateTrip} className="space-y-4">
                   {/* Trip Name */}
                   <div className="relative">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Trip Name</label>
-                    <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                      <span className="absolute left-4 top-3.5 text-slate-400">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Trip Name</label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                      <span className="absolute left-3.5 top-3 text-slate-500">
                         <NoteIcon />
                       </span>
                       <input
                         value={form.name}
                         onChange={(event) => setForm({ ...form, name: event.target.value })}
-                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
+                        className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
                         placeholder="e.g. Winter in Kashmir"
                       />
                     </div>
                   </div>
 
                   {/* Destination Panel */}
-                  <div className="space-y-3">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Destination</label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block">Destination</label>
 
-                    <div className="grid gap-3.5 grid-cols-1">
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                       {/* Country Select */}
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs col-span-1 sm:col-span-2">
+                        <span className="absolute left-3.5 top-3 text-slate-500">
                           <MapPinIcon />
                         </span>
                         <select
                           value={selectedCountry}
                           onChange={(event) => handleCountrySelect(event.target.value)}
-                          className="w-full pl-11 pr-10 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer placeholder-slate-400"
+                          className="w-full pl-10 pr-10 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer placeholder-slate-500"
                         >
                           <option value="">Select Country...</option>
                           {ALL_COUNTRIES.map((country) => (
                             <option key={country} value={country}>{country}</option>
                           ))}
                         </select>
-                        <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                        <span className="absolute right-3.5 top-3 text-slate-500 pointer-events-none">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                           </svg>
@@ -954,15 +950,15 @@ export default function DashboardPage() {
                       {/* State Select / Custom input */}
                       {selectedCountry && (
                         countryHasData ? (
-                          <div className="space-y-3.5">
-                            <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                              <span className="absolute left-4 top-3.5 text-slate-400">
+                          <>
+                            <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                              <span className="absolute left-3.5 top-3 text-slate-500">
                                 <MapPinIcon />
                               </span>
                               <select
                                 value={selectedState}
                                 onChange={(event) => handleStateSelect(event.target.value)}
-                                className="w-full pl-11 pr-10 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                                className="w-full pl-10 pr-8 py-2.5 bg-transparent text-xs sm:text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                               >
                                 <option value="">Select State/Region...</option>
                                 {Object.keys(LOCATION_DATA[selectedCountry] || {}).map((state) => (
@@ -970,37 +966,37 @@ export default function DashboardPage() {
                                 ))}
                                 <option value="custom">Other / Custom...</option>
                               </select>
-                              <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <span className="absolute right-3 top-3 text-slate-500 pointer-events-none">
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
                               </span>
                             </div>
 
                             {selectedState === "custom" && (
-                              <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                                <span className="absolute left-4 top-3.5 text-slate-400">
+                              <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                                <span className="absolute left-3.5 top-3 text-slate-500">
                                   <MapPinIcon />
                                 </span>
                                 <input
                                   value={customState}
                                   onChange={(event) => handleCustomStateChange(event.target.value)}
-                                  className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
-                                  placeholder="Type custom state/region..."
+                                  className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
+                                  placeholder="Custom state..."
                                 />
                               </div>
                             )}
-                          </div>
+                          </>
                         ) : (
-                          <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                            <span className="absolute left-4 top-3.5 text-slate-400">
+                          <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs col-span-1 sm:col-span-2">
+                            <span className="absolute left-3.5 top-3 text-slate-500">
                               <MapPinIcon />
                             </span>
                             <input
                               value={customState}
                               onChange={(event) => handleCustomStateChange(event.target.value)}
-                              className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
-                              placeholder="Type state/region (optional)..."
+                              className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
+                              placeholder="State or region (optional)..."
                             />
                           </div>
                         )
@@ -1010,15 +1006,15 @@ export default function DashboardPage() {
                       {selectedCountry && (
                         countryHasData ? (
                           selectedState && (
-                            <div className="space-y-3.5">
-                              <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                                <span className="absolute left-4 top-3.5 text-slate-400">
+                            <>
+                              <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                                <span className="absolute left-3.5 top-3 text-slate-500">
                                   <MapPinIcon />
                                 </span>
                                 <select
                                   value={selectedPlace}
                                   onChange={(event) => handlePlaceSelect(event.target.value)}
-                                  className="w-full pl-11 pr-10 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                                  className="w-full pl-10 pr-8 py-2.5 bg-transparent text-xs sm:text-sm font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                                 >
                                   <option value="">Select Place...</option>
                                   {(LOCATION_DATA[selectedCountry]?.[selectedState] || []).map((place) => (
@@ -1026,38 +1022,38 @@ export default function DashboardPage() {
                                   ))}
                                   <option value="custom">Other / Custom...</option>
                                 </select>
-                                <span className="absolute right-4 top-4 text-slate-400 pointer-events-none">
-                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <span className="absolute right-3 top-3 text-slate-500 pointer-events-none">
+                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                   </svg>
                                 </span>
                               </div>
 
                               {selectedPlace === "custom" && (
-                                <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                                  <span className="absolute left-4 top-3.5 text-slate-400">
+                                <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                                  <span className="absolute left-3.5 top-3 text-slate-500">
                                     <MapPinIcon />
                                   </span>
                                   <input
                                     value={customPlace}
                                     onChange={(event) => handleCustomPlaceChange(event.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
-                                    placeholder="Type custom place..."
+                                    className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
+                                    placeholder="Custom place..."
                                   />
                                 </div>
                               )}
-                            </div>
+                            </>
                           )
                         ) : (
-                          <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                            <span className="absolute left-4 top-3.5 text-slate-400">
+                          <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs col-span-1 sm:col-span-2">
+                            <span className="absolute left-3.5 top-3 text-slate-500">
                               <MapPinIcon />
                             </span>
                             <input
                               value={customPlace}
                               onChange={(event) => handleCustomPlaceChange(event.target.value)}
-                              className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
-                              placeholder="Type place or city..."
+                              className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
+                              placeholder="City or place..."
                             />
                           </div>
                         )
@@ -1066,28 +1062,28 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Date, Duration, Travelers Grid */}
-                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                     {/* Start Date */}
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Start Date</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Start Date</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <span className="absolute left-3 top-2.5 text-slate-500">
                           <CalendarIcon />
                         </span>
                         <input
                           type="date"
                           value={form.startDate}
                           onChange={(event) => setForm({ ...form, startDate: event.target.value })}
-                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                          className="w-full pl-9 pr-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none"
                         />
                       </div>
                     </div>
 
                     {/* Duration */}
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Duration (Days)</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Days</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <span className="absolute left-3 top-2.5 text-slate-500">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
@@ -1097,16 +1093,16 @@ export default function DashboardPage() {
                           min="1"
                           value={form.durationDays}
                           onChange={(event) => setForm({ ...form, durationDays: event.target.value })}
-                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                          className="w-full pl-9 pr-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none"
                         />
                       </div>
                     </div>
 
                     {/* Travelers */}
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Travelers</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                        <span className="absolute left-4 top-3.5 text-slate-400">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Travelers</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                        <span className="absolute left-3 top-2.5 text-slate-500">
                           <UsersIcon />
                         </span>
                         <input
@@ -1114,37 +1110,21 @@ export default function DashboardPage() {
                           min="1"
                           value={form.travelers}
                           onChange={(event) => setForm({ ...form, travelers: event.target.value })}
-                          className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none"
+                          className="w-full pl-9 pr-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Interests */}
-                  <div className="relative">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Interests & Vibes <span className="text-slate-400 font-normal lowercase">(optional)</span></label>
-                    <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
-                      <span className="absolute left-4 top-3.5 text-slate-400">
-                        <HeartIcon />
-                      </span>
-                      <input
-                        value={form.interests}
-                        onChange={(event) => setForm({ ...form, interests: event.target.value })}
-                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400"
-                        placeholder="(Optional) e.g. food, beaches, historic walks"
-                      />
-                    </div>
-                  </div>
-
                   {/* Budget & Style */}
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Budget</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Budget</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                         <select
                           value={form.budget}
                           onChange={(event) => setForm({ ...form, budget: event.target.value })}
-                          className="w-full px-4 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                          className="w-full px-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                         >
                           <option value="budget">Budget</option>
                           <option value="mid-range">Mid-range</option>
@@ -1152,13 +1132,14 @@ export default function DashboardPage() {
                         </select>
                       </div>
                     </div>
+
                     <div className="relative">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Travel Pace</label>
-                      <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Travel Pace</label>
+                      <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                         <select
                           value={form.style}
                           onChange={(event) => setForm({ ...form, style: event.target.value })}
-                          className="w-full px-4 py-3 bg-transparent text-sm text-slate-900 outline-none appearance-none cursor-pointer"
+                          className="w-full px-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none appearance-none cursor-pointer"
                         >
                           <option value="relaxed">Relaxed</option>
                           <option value="balanced">Balanced</option>
@@ -1168,14 +1149,31 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  {/* Interests */}
+                  <div className="relative">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Interests & Vibes <span className="text-slate-500 font-medium lowercase">(optional)</span></label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                      <span className="absolute left-3.5 top-3 text-slate-500">
+                        <HeartIcon />
+                      </span>
+                      <input
+                        value={form.interests}
+                        onChange={(event) => setForm({ ...form, interests: event.target.value })}
+                        className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder-slate-500"
+                        placeholder="e.g. food, beaches, historic walks"
+                      />
+                    </div>
+                  </div>
+
                   {/* Notes */}
                   <div className="relative">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Notes</label>
-                    <div className="relative rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus-within:bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100/60 transition-all duration-200">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1 block">Notes</label>
+                    <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 hover:border-slate-400 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
                       <textarea
                         value={form.notes}
                         onChange={(event) => setForm({ ...form, notes: event.target.value })}
-                        className="min-h-24 w-full px-4 py-3 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400 resize-y"
+                        rows={2}
+                        className="w-full px-3 py-2 bg-transparent text-xs font-semibold text-slate-900 outline-none placeholder-slate-500 resize-none"
                         placeholder="Any budget restrictions, accommodations, or special highlights..."
                       />
                     </div>
@@ -1185,11 +1183,11 @@ export default function DashboardPage() {
                   <button
                     type="submit"
                     disabled={savingTrip}
-                    className="w-full relative overflow-hidden flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition-all duration-300 disabled:opacity-75 disabled:pointer-events-none transform hover:-translate-y-0.5"
+                    className="w-full relative overflow-hidden flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-sky-200/80 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition-all duration-300 disabled:opacity-75 disabled:pointer-events-none transform hover:-translate-y-0.5 cursor-pointer"
                   >
                     {savingTrip ? (
                       <>
-                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
@@ -1206,164 +1204,240 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            {/* RIGHT COLUMN: Your Trips Feed */}
-            <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                    Saved Trips
-                    <span className="bg-sky-50 border border-sky-100 text-sky-700 px-2 py-0.5 rounded-full text-xs font-bold shadow-xs">
-                      {trips.length}
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Select a trip card to view gallery highlights.</p>
+            {/* RIGHT COLUMN: Your Trips Feed with Search & Filter */}
+            <section className="space-y-5">
+              {/* Header & Filter Controls */}
+              <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-md shadow-slate-200/40 backdrop-blur-md space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                      Saved Trips
+                      <span className="bg-sky-50 border border-sky-100 text-sky-700 px-2.5 py-0.5 rounded-full text-xs font-extrabold shadow-xs">
+                        {trips.length}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5 font-medium">Manage and view trip itineraries below.</p>
+                  </div>
+
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 text-xs font-semibold self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("all")}
+                      className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${statusFilter === "all" ? "bg-white text-slate-900 shadow-xs font-extrabold" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      All ({trips.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("ready")}
+                      className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${statusFilter === "ready" ? "bg-white text-emerald-700 shadow-xs font-extrabold" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Ready ({trips.filter(t => t.itinerary).length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("draft")}
+                      className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${statusFilter === "draft" ? "bg-white text-sky-700 shadow-xs font-extrabold" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Drafts ({trips.filter(t => !t.itinerary).length})
+                    </button>
+                  </div>
                 </div>
+
+                {/* Search Bar */}
+                {trips.length > 0 && (
+                  <div className="relative rounded-2xl border border-slate-300 bg-slate-100/90 hover:bg-slate-100 focus-within:bg-white focus-within:border-sky-600 focus-within:ring-2 focus-within:ring-sky-200 transition-all duration-200 shadow-xs">
+                    <span className="absolute left-3.5 top-2.5 text-slate-500">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </span>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search saved trips by name or location..."
+                      className="w-full pl-10 pr-8 py-2 text-xs font-semibold text-slate-900 bg-transparent outline-none placeholder-slate-500"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <CloseIcon />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {trips.length === 0 ? (
-                <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center text-slate-500 backdrop-blur-xs">
-                  <svg className="h-10 w-10 mx-auto text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                  <p className="text-sm font-semibold">No saved trips yet</p>
-                  <p className="text-xs text-slate-400 mt-1">Fill out the planner form on the left to start.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {trips.map((trip) => {
-                    const isExpanded = activeTripId === trip.id;
-                    const coverImage = buildTripImage(trip.destination);
-                    const gallery = buildTripGallery(trip.destination);
-                    const travelerCount = String(trip.travelers || "1");
+              {/* Feed Content Area with Scroll Container */}
+              {(() => {
+                if (trips.length === 0) {
+                  return (
+                    <div className="rounded-3xl border border-dashed border-slate-300 bg-white/90 p-8 text-center text-slate-500 backdrop-blur-md shadow-sm">
+                      <svg className="h-10 w-10 mx-auto text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      <p className="text-sm font-semibold text-slate-700">No saved trips yet</p>
+                      <p className="text-xs text-slate-400 mt-1">Fill out the planner form on the left to start.</p>
+                    </div>
+                  );
+                }
 
-                    return (
-                      <div
-                        key={trip.id}
-                        className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col"
+                if (filteredTrips.length === 0) {
+                  return (
+                    <div className="rounded-3xl border border-slate-200/90 bg-white p-8 text-center text-slate-500 backdrop-blur-md shadow-md shadow-slate-200/40">
+                      <p className="text-sm font-bold text-slate-700">No matching trips found</p>
+                      <p className="text-xs text-slate-400 mt-1">Try clearing your search query or switching filters.</p>
+                      <button
+                        onClick={() => { setSearchQuery(""); setStatusFilter("all"); }}
+                        className="mt-4 text-xs font-bold text-sky-600 hover:text-sky-700 underline cursor-pointer"
                       >
-                        {/* Clickable Header Banner */}
+                        Reset filters
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4 max-h-[750px] overflow-y-auto pr-1">
+                    {filteredTrips.map((trip) => {
+                      const isExpanded = activeTripId === trip.id;
+                      const coverImage = buildTripImage(trip.destination);
+                      const gallery = buildTripGallery(trip.destination);
+                      const travelerCount = String(trip.travelers || "1");
+
+                      return (
                         <div
-                          className="cursor-pointer relative overflow-hidden"
-                          onClick={() => setActiveTripId(isExpanded ? null : trip.id)}
+                          key={trip.id}
+                          className="group overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-md shadow-slate-200/50 hover:shadow-xl hover:shadow-slate-300/60 hover:border-sky-300 hover:-translate-y-1.5 transition-all duration-300 ease-out flex flex-col cursor-pointer"
                         >
-                          <div className="relative h-44 w-full overflow-hidden bg-slate-100">
-                            <Image
-                              src={coverImage}
-                              alt={trip.name || trip.destination || "Trip destination"}
-                              fill
-                              sizes="(max-width: 1024px) 100vw, 45vw"
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/15 to-transparent" />
+                          {/* Clickable Header Banner */}
+                          <div
+                            className="cursor-pointer relative overflow-hidden"
+                            onClick={() => setActiveTripId(isExpanded ? null : trip.id)}
+                          >
+                            <div className="relative h-36 w-full overflow-hidden bg-slate-100">
+                              <Image
+                                src={coverImage}
+                                alt={trip.name || trip.destination || "Trip destination"}
+                                fill
+                                sizes="(max-width: 1024px) 100vw, 45vw"
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/20 to-transparent" />
 
-                            {/* Itinerary Status Overlay */}
-                            <div className="absolute top-4 right-4">
-                              {trip.itinerary ? (
-                                <span className="backdrop-blur-md bg-emerald-500/90 text-white text-xs px-2.5 py-1 rounded-full font-semibold border border-emerald-400/20 flex items-center gap-1 shadow-sm">
-                                  ✓ Itinerary ready
-                                </span>
-                              ) : (
-                                <span className="backdrop-blur-md bg-slate-800/80 text-slate-200 text-xs px-2.5 py-1 rounded-full font-semibold border border-slate-700/20 flex items-center gap-1 shadow-sm">
-                                  ⚡ Draft Plan
-                                </span>
-                              )}
-                            </div>
+                              {/* Itinerary Status Overlay */}
+                              <div className="absolute top-3 right-3">
+                                {trip.itinerary ? (
+                                  <span className="backdrop-blur-md bg-emerald-500/90 text-white text-[11px] px-2.5 py-1 rounded-full font-semibold border border-emerald-400/20 flex items-center gap-1 shadow-xs">
+                                    ✓ Ready
+                                  </span>
+                                ) : (
+                                  <span className="backdrop-blur-md bg-slate-900/80 text-slate-200 text-[11px] px-2.5 py-1 rounded-full font-semibold border border-slate-700/30 flex items-center gap-1 shadow-xs">
+                                    ⚡ Draft
+                                  </span>
+                                )}
+                              </div>
 
-                            {/* Title and Destination Texts */}
-                            <div className="absolute bottom-4 left-4 right-4">
-                              <h3 className="text-lg font-bold text-white tracking-wide">{trip.name}</h3>
-                              <p className="text-xs text-slate-200/95 font-medium mt-0.5 flex items-center gap-1.5 truncate">
-                                <span className="opacity-70"><MapPinIcon /></span>
-                                {formatDestinationDisplay(trip.destination)}
-                              </p>
+                              {/* Title and Destination Texts */}
+                              <div className="absolute bottom-3 left-4 right-4">
+                                <h3 className="text-base sm:text-lg font-extrabold text-white tracking-wide truncate">{trip.name}</h3>
+                                <p className="text-xs text-slate-200/95 font-medium mt-0.5 flex items-center gap-1 truncate">
+                                  <span className="opacity-80"><MapPinIcon /></span>
+                                  {formatDestinationDisplay(trip.destination)}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Content Area */}
-                        <div className="p-5 space-y-4">
-                          {/* Calendar & Travelers Metabar */}
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-500">
-                            <span className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5">
-                              <span className="text-slate-400"><CalendarIcon /></span>
-                              {formatDateRange(trip.dates)}
-                            </span>
-                            <span className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5">
-                              <span className="text-slate-400"><UsersIcon /></span>
-                              {travelerCount} traveler{travelerCount === "1" ? "" : "s"}
-                            </span>
-                          </div>
-
-                          {/* Interests section */}
-                          {trip.interests && (
-                            <div className="flex items-start gap-2 text-xs text-slate-500 bg-slate-50/50 rounded-2xl p-3 border border-slate-100">
-                              <span className="text-rose-400 shrink-0 mt-0.5"><HeartIcon /></span>
-                              <span className="line-clamp-2"><strong>Interests:</strong> {trip.interests}</span>
+                          {/* Content Area */}
+                          <div className="p-4 space-y-3">
+                            {/* Calendar & Travelers Metabar */}
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                              <span className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1 text-[11px]">
+                                <span className="text-slate-400"><CalendarIcon /></span>
+                                {formatDateRange(trip.dates)}
+                              </span>
+                              <span className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1 text-[11px]">
+                                <span className="text-slate-400"><UsersIcon /></span>
+                                {travelerCount} traveler{travelerCount === "1" ? "" : "s"}
+                              </span>
                             </div>
-                          )}
 
-                          {/* Action Items Footer */}
-                          <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
-                            <Link
-                              href={`/planner?tripId=${encodeURIComponent(trip.id)}`}
-                              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-center rounded-xl text-xs font-bold transition ${trip.itinerary
-                                ? "bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
-                                : "bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-100"
-                                }`}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {trip.itinerary ? "Explore Itinerary" : "Plan Trip"}
-                            </Link>
+                            {/* Interests section */}
+                            {trip.interests && (
+                              <div className="flex items-start gap-1.5 text-xs text-slate-500 bg-slate-50/60 rounded-xl p-2.5 border border-slate-100">
+                                <span className="text-rose-400 shrink-0 mt-0.5"><HeartIcon /></span>
+                                <span className="line-clamp-1 text-[11px]"><strong>Interests:</strong> {trip.interests}</span>
+                              </div>
+                            )}
 
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDeleteTrip(trip.id, trip.name);
-                              }}
-                              className="rounded-xl border border-slate-200 p-2.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all"
-                              title="Delete Trip"
-                            >
-                              <TrashIcon />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Collapsible Photo Gallery */}
-                        {isExpanded ? (
-                          <div className="border-t border-slate-100 bg-slate-50/30 p-5 space-y-3 animate-fade-in">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Destination Highlights</p>
-                              <button
-                                onClick={() => setActiveTripId(null)}
-                                className="text-[10px] font-bold uppercase tracking-widest text-sky-600 hover:text-sky-700 transition"
+                            {/* Action Items Footer */}
+                            <div className="flex items-center gap-2.5 pt-2 border-t border-slate-100">
+                              <Link
+                                href={`/planner?tripId=${encodeURIComponent(trip.id)}`}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-center rounded-xl text-xs font-bold transition ${trip.itinerary
+                                  ? "bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
+                                  : "bg-sky-600 hover:bg-sky-700 text-white shadow-sm shadow-sky-100"
+                                  }`}
+                                onClick={(event) => event.stopPropagation()}
                               >
-                                Hide Gallery
+                                {trip.itinerary ? "Explore Itinerary" : "Plan Trip"}
+                              </Link>
+
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleDeleteTrip(trip.id, trip.name);
+                                }}
+                                className="rounded-xl border border-slate-200 p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all cursor-pointer"
+                                title="Delete Trip"
+                              >
+                                <TrashIcon />
                               </button>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              {gallery.map((image, index) => (
-                                <div
-                                  key={`${trip.id}-${index}`}
-                                  className="relative h-20 overflow-hidden rounded-xl group/img border border-slate-200/50 shadow-inner"
-                                >
-                                  <Image
-                                    src={image}
-                                    alt={`${trip.destination} view ${index + 1}`}
-                                    fill
-                                    sizes="(max-width: 640px) 33vw, 15vw"
-                                    className="object-cover group-hover/img:scale-110 transition-transform duration-300"
-                                  />
-                                </div>
-                              ))}
-                            </div>
                           </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+
+                          {/* Collapsible Photo Gallery */}
+                          {isExpanded ? (
+                            <div className="border-t border-slate-100 bg-slate-50/40 p-4 space-y-2.5 animate-fade-in">
+                              <div className="flex items-center justify-between">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Highlights</p>
+                                <button
+                                  onClick={() => setActiveTripId(null)}
+                                  className="text-[10px] font-bold uppercase tracking-widest text-sky-600 hover:text-sky-700 transition cursor-pointer"
+                                >
+                                  Hide Gallery
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                {gallery.map((image, index) => (
+                                  <div
+                                    key={`${trip.id}-${index}`}
+                                    className="relative h-16 overflow-hidden rounded-xl group/img border border-slate-200/50 shadow-inner"
+                                  >
+                                    <Image
+                                      src={image}
+                                      alt={`${trip.destination} view ${index + 1}`}
+                                      fill
+                                      sizes="(max-width: 640px) 33vw, 15vw"
+                                      className="object-cover group-hover/img:scale-110 transition-transform duration-300"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </section>
           </div>
         </div>
