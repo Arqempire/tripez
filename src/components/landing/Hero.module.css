@@ -1,0 +1,36 @@
+.badge {
+  border-color: #bae6fd;
+  background-color: rgba(240, 249, 255, 0.7);
+}
+
+.gradientText {
+  background-image: linear-gradient(to right, #0284c7, #4f46e5);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.primaryBtn {
+  background-image: linear-gradient(to right, #0f172a, #0369a1);
+  box-shadow: 0 10px 15px -3px rgba(224, 242, 254, 1), 0 4px 6px -4px rgba(224, 242, 254, 1);
+  transition: all 0.3s ease;
+}
+
+.primaryBtn:hover {
+  background-image: linear-gradient(to right, #0369a1, #075985);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.secondaryBtn {
+  transition: all 0.3s ease;
+}
+
+.secondaryBtn:hover {
+  transform: translateY(-2px);
+}
+
+.pillTag {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-color: #f1f5f9;
+}

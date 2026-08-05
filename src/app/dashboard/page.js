@@ -1307,8 +1307,8 @@ export default function DashboardPage() {
                             <Link
                               href={`/planner?tripId=${encodeURIComponent(trip.id)}`}
                               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-center rounded-xl text-xs font-bold transition ${trip.itinerary
-                                  ? "bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
-                                  : "bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-100"
+                                ? "bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
+                                : "bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-100"
                                 }`}
                               onClick={(event) => event.stopPropagation()}
                             >

@@ -1,0 +1,5 @@
+.bgOverlay {
+  background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.15), transparent 40%),
+              linear-gradient(135deg, rgba(248, 251, 255, 0.93) 0%, rgba(238, 246, 255, 0.95) 50%, rgba(255, 255, 255, 0.97) 100%);
+  backdrop-filter: blur(2px);
+}

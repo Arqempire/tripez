@@ -1,0 +1,49 @@
+.mockupFrame {
+  background-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 25px 50px -12px rgba(226, 232, 240, 0.5);
+  backdrop-filter: blur(12px);
+}
+
+.glowSky {
+  background-color: rgba(14, 165, 233, 0.1);
+  filter: blur(24px);
+}
+
+.glowIndigo {
+  background-color: rgba(99, 102, 241, 0.1);
+  filter: blur(24px);
+}
+
+.floatingWidgetExpense {
+  position: absolute;
+  left: -3rem;
+  bottom: -5.75rem;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(226, 232, 240, 0.7);
+  backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
+}
+
+.floatingWidgetExpense:hover {
+  transform: scale(1.05);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.floatingWidgetCollab {
+  position: absolute;
+  right: -3rem;
+  top: -2.5rem;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(226, 232, 240, 0.7);
+  backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
+}
+
+.floatingWidgetCollab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.progressSpent {
+  width: 72%;
+}
