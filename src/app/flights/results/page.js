@@ -6,60 +6,21 @@ import { useEffect, useMemo, useState, Suspense } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Sidebar from "@/components/Sidebar";
 
-// Material Symbols are used via the .mi CSS class + font loaded in layout.js
-
 /**
- * Build a Google Flights deep-link that matches the search parameters
- * so the user lands on a pre-populated Google Flights page.
- *
- * Google Flights URL structure:
- *   https://www.google.com/travel/flights/search?tfs=...
- *
- * The `tfs` parameter encodes the itinerary. The simplest reliable approach
- * is to use the `q` (query) parameter which Google Flights understands:
- *   /travel/flights/search?tfs=CBw...
- *
- * Since the `tfs` encoding is opaque binary, we use the well-known
- * Google Flights search query string format instead:
- *   /travel/flights?q=Flights+from+DEL+to+BOM
- * combined with additional supported parameters.
+ * Fallback Google Flights search URL — used only when booking_token is absent.
+ * Opens a live search for the route/date, which reliably shows results.
  */
-function buildGoogleFlightsUrl({ departureId, arrivalId, outboundDate, returnDate, type, travelClass }) {
-  // type: "1" = roundtrip, "2" = oneway
+function buildFallbackSearchUrl({ departureId, arrivalId, outboundDate, returnDate, type }) {
   const isOneWay = type === "2";
-
-  // Class map: 1=economy, 2=premium economy, 3=business, 4=first
-  const classMap = { "1": "Economy", "2": "Premium+Economy", "3": "Business", "4": "First" };
-  const cabinLabel = classMap[travelClass] || "Economy";
-
-  const base = "https://www.google.com/travel/flights/search";
-  const params = new URLSearchParams();
-
-  // Build the human-readable query Google Flights understands
-  if (isOneWay) {
-    params.set("q", `One-way flights from ${departureId} to ${arrivalId}`);
-  } else {
-    params.set("q", `Flights from ${departureId} to ${arrivalId}`);
-  }
-
-  // Add structured itinerary via tfs parameter (Google Flights deep-link format)
-  // Format: CBwQAhooEgoyMDI2LTA4LTE1agcIARIDREVMcgcIARIDQk9NGAAqBggBEgIxMg==
-  // Since tfs is base64 proto, we instead rely on the URL format below which
-  // works reliably across regions:
-  // /travel/flights#flt=DEL.BOM.2026-08-15;c:INR;e:1;sd:1;t:f
-  // However the # anchor params are not universally stable either.
-  // The most stable approach is the structured search URL:
-  const fromTo = `${departureId}.${arrivalId}.${outboundDate}`;
-  let flightHash = fromTo;
-  if (!isOneWay && returnDate) {
-    flightHash += `*${arrivalId}.${departureId}.${returnDate}`;
-  }
-
-  // Cabin code: f=economy, p=premium, b=business, r=first
-  const cabinCode = { "1": "f", "2": "p", "3": "b", "4": "r" }[travelClass] || "f";
-
-  return `https://www.google.com/travel/flights#flt=${encodeURIComponent(flightHash)};c:${cabinCode};tt:${isOneWay ? "o" : "r"}`;
+  const q = isOneWay
+    ? `One-way flights from ${departureId} to ${arrivalId} on ${outboundDate}`
+    : `Flights from ${departureId} to ${arrivalId} on ${outboundDate}${
+        returnDate ? ` returning ${returnDate}` : ""
+      }`;
+  return `https://www.google.com/travel/flights/search?${new URLSearchParams({ q })}`;
 }
+
+
 
 const formatDDMMYYYY = (dateStr) => {
   if (!dateStr) return "";
@@ -99,6 +60,9 @@ function FlightResultsContent() {
   const [sortBy, setSortBy] = useState("cheapest");
   const [nonstopOnly, setNonstopOnly] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState(null);
+
+  // Booking flow: null | { status:"loading" } | { status:"options", options:[] } | { status:"error", message:string }
+  const [bookingState, setBookingState] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -169,6 +133,76 @@ function FlightResultsContent() {
     router.replace("/");
   };
 
+  /**
+   * Resolve a flight's booking_token via /api/flights/book.
+   * On any API / token error the server returns { fallback: true, fallback_url }
+   * and we open that URL transparently — the user always lands somewhere useful.
+   */
+  const handleBookFlight = async (flight) => {
+    const bookingToken   = flight.booking_token;
+    const departureToken = flight.departure_token;
+
+    // Build local fallback in case the API call itself fails
+    const localFallback = buildFallbackSearchUrl({ departureId, arrivalId, outboundDate, returnDate, type });
+
+    if (!bookingToken && !departureToken) {
+      window.open(localFallback, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setBookingState({ status: "loading" });
+
+    try {
+      const params = new URLSearchParams({
+        currency,
+        departure_id:  departureId,
+        arrival_id:    arrivalId,
+        outbound_date: outboundDate,
+        return_date:   returnDate,
+        type,
+      });
+      if (bookingToken)   params.set("booking_token",  bookingToken);
+      if (departureToken) params.set("departure_token", departureToken);
+
+      const res  = await fetch(`/api/flights/book?${params}`);
+      const data = await res.json();
+
+      // Server-side fallback (expired token, plan limit, etc.)
+      if (data.fallback) {
+        window.open(data.fallback_url || localFallback, "_blank", "noopener,noreferrer");
+        setBookingState(null);
+        return;
+      }
+
+      if (!res.ok || data.error) {
+        window.open(localFallback, "_blank", "noopener,noreferrer");
+        setBookingState(null);
+        return;
+      }
+
+      const options = data.booking_options ?? [];
+
+      if (options.length === 0) {
+        window.open(localFallback, "_blank", "noopener,noreferrer");
+        setBookingState(null);
+        return;
+      }
+
+      if (options.length === 1) {
+        window.open(options[0].url, "_blank", "noopener,noreferrer");
+        setBookingState(null);
+        return;
+      }
+
+      setBookingState({ status: "options", options });
+    } catch (err) {
+      console.error("Booking resolution error:", err);
+      // Never dead-end the user — always open a working search
+      window.open(localFallback, "_blank", "noopener,noreferrer");
+      setBookingState(null);
+    }
+  };
+
   const processedFlights = useMemo(() => {
     if (!flightData) return [];
 
@@ -223,7 +257,7 @@ function FlightResultsContent() {
       {/* MAIN CONTENT CONTAINER */}
       <main className={`flex-1 w-full min-w-0 overflow-x-hidden min-h-screen pt-6 md:pt-0 pb-24 md:pb-8 transition-all duration-300 ${isSidebarCollapsed ? "md:pl-20" : "md:pl-64"}`}>
         <div className="w-full max-w-7xl mx-auto px-4 py-6 sm:px-8 sm:py-10 space-y-6 sm:space-y-8">
-          
+
           {/* SEARCH SUMMARY BANNER & MODIFY BUTTON */}
           <header className="w-full bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-xl shadow-slate-200/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -271,7 +305,7 @@ function FlightResultsContent() {
             </div>
           ) : (
             <section className="w-full space-y-6">
-              
+
               {/* SORTING & FILTER CONTROLS BAR */}
               <div className="w-full bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -279,16 +313,15 @@ function FlightResultsContent() {
                   <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
                     {[
                       { label: "Cheapest", value: "cheapest" },
-                      { label: "Fastest",  value: "fastest"  },
+                      { label: "Fastest", value: "fastest" },
                       { label: "Earliest", value: "earliest" }
                     ].map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
                         onClick={() => setSortBy(opt.value)}
-                        className={`sort-pill px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer ${
-                          sortBy === opt.value ? "bg-white text-slate-900 shadow-2xs active" : "text-slate-600"
-                        }`}
+                        className={`sort-pill px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer ${sortBy === opt.value ? "bg-white text-slate-900 shadow-2xs active" : "text-slate-600"
+                          }`}
                       >
                         {opt.label}
                       </button>
@@ -328,7 +361,7 @@ function FlightResultsContent() {
 
                     return (
                       <div
-                      key={flight.departure_token || idx}
+                        key={flight.departure_token || idx}
                         className="flight-card bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-6 shadow-md shadow-slate-200/50 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 sm:gap-6 group"
                       >
                         {/* Airline Logo & Segment Timeline */}
@@ -422,7 +455,7 @@ function FlightResultsContent() {
           {selectedFlight && (
             <div
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-sm"
-              onClick={(e) => { if (e.target === e.currentTarget) setSelectedFlight(null); }}
+              onClick={(e) => { if (e.target === e.currentTarget) { setSelectedFlight(null); setBookingState(null); } }}
             >
               <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
 
@@ -443,7 +476,7 @@ function FlightResultsContent() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedFlight(null)}
+                    onClick={() => { setSelectedFlight(null); setBookingState(null); }}
                     className="h-9 w-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold transition-colors cursor-pointer shrink-0"
                   >
                     <span className="mi text-lg">close</span>
@@ -477,15 +510,19 @@ function FlightResultsContent() {
                             <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{formatDDMMYYYY(leg.departure_airport?.time?.split(" ")[0])}</p>
                           </div>
 
-                          <div className="flex-1 flex flex-col items-center gap-1">
-                            <p className="text-[10px] font-extrabold text-slate-500">{Math.floor((leg.duration || 0) / 60)}h {(leg.duration || 0) % 60}m</p>
-                            <div className="relative w-full flex items-center">
-                              <div className="h-px w-full bg-slate-300" />
-                              <div className="absolute left-1/2 -translate-x-1/2 bg-white px-1">
-                                <span className="mi text-[18px] text-sky-500">flight</span>
-                              </div>
+                          <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                            <p className="text-[10px] font-extrabold text-slate-500 whitespace-nowrap">
+                              {Math.floor((leg.duration || 0) / 60)}h {(leg.duration || 0) % 60}m
+                            </p>
+                            {/* Route line with plane icon inline — nothing overlaps */}
+                            <div className="w-full flex items-center gap-1">
+                              <div className="h-px flex-1 border-t-2 border-dashed border-slate-300" />
+                              <span className="mi text-base text-sky-500 shrink-0 leading-none">flight</span>
+                              <div className="h-px flex-1 border-t-2 border-dashed border-slate-300" />
                             </div>
-                            <p className="text-[10px] font-bold text-slate-400">{leg.travel_class || "Economy"}</p>
+                            <p className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                              {leg.travel_class || "Economy"}
+                            </p>
                           </div>
 
                           <div className="text-right min-w-0">
@@ -590,34 +627,86 @@ function FlightResultsContent() {
                 </div>
 
                 {/* Modal Footer — Price + Book CTA */}
-                <div className="border-t border-slate-100 px-6 py-4 shrink-0">
-                  <div className="flex items-center justify-between gap-4">
+                <div className="border-t border-slate-100 dark:border-slate-700/60 px-6 py-4 shrink-0">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Fare</p>
-                      <p className="text-2xl font-black text-slate-900 tracking-tight">
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Fare</p>
+                      <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                         {(() => {
                           const p = selectedFlight.price ?? selectedFlight.total_price ?? selectedFlight.fare_price;
                           return p ? `${currency} ${Number(p).toLocaleString()}` : "See on Google Flights";
                         })()}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-medium">per person, taxes included</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">per person, taxes included</p>
                     </div>
-                    <a
-                      href={buildGoogleFlightsUrl({
-                        departureId,
-                        arrivalId,
-                        outboundDate,
-                        returnDate,
-                        type,
-                        travelClass
-                      })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="book-cta px-6 py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 text-xs font-extrabold text-white shadow-lg shadow-sky-100 cursor-pointer inline-flex items-center gap-2 shrink-0"
+
+                    <button
+                      type="button"
+                      onClick={() => handleBookFlight(selectedFlight)}
+                      disabled={bookingState?.status === "loading"}
+                      className="book-cta px-6 py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 text-xs font-extrabold text-white shadow-lg shadow-sky-100 cursor-pointer inline-flex items-center gap-2 shrink-0 disabled:opacity-70"
                     >
-                      Book on Google Flights ↗
-                    </a>
+                      {bookingState?.status === "loading" ? (
+                        <><span className="mi text-sm animate-spin" style={{ animationDuration: "1s" }}>progress_activity</span> Finding Options...</>
+                      ) : (
+                        <><span className="mi text-sm">open_in_new</span> Book This Flight</>
+                      )}
+                    </button>
                   </div>
+
+                  {/* Booking error */}
+                  {bookingState?.status === "error" && (
+                    <div className="mt-3 flex items-center gap-2 text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-700/30 rounded-xl px-3 py-2">
+                      <span className="mi text-sm">error</span>
+                      {bookingState.message}
+                      <button type="button" onClick={() => setBookingState(null)} className="ml-auto mi text-sm cursor-pointer">close</button>
+                    </div>
+                  )}
+
+                  {/* Booking options chooser */}
+                  {bookingState?.status === "options" && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span className="mi text-sm">sell</span> Choose where to book
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {bookingState.options.map((opt, i) => (
+                          <a
+                            key={i}
+                            href={opt.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 px-4 py-3 transition-all cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="mi text-base text-sky-500 group-hover:text-sky-600">
+                                {opt.book_directly ? "flight" : "open_in_new"}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">{opt.label}</p>
+                                {opt.marketed_as?.length > 0 && (
+                                  <p className="text-[10px] text-slate-400 truncate">{opt.marketed_as.join(" · ")}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              {opt.price && (
+                                <p className="text-sm font-black text-slate-900 dark:text-white">{currency} {Number(opt.price).toLocaleString()}</p>
+                              )}
+                              <span className="mi text-sm text-slate-400 group-hover:text-sky-500">arrow_forward</span>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setBookingState(null)}
+                        className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1 mt-1 cursor-pointer"
+                      >
+                        <span className="mi text-sm">close</span> Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
 
               </div>
